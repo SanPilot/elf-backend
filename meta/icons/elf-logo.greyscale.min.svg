@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   id="svg2"
+   viewBox="0 0 401.92189 430.53121"
+   height="4.78368in"
+   width="4.4657989in">
+  <defs
+     id="defs4">
+    <filter
+       id="filter4180"
+       style="color-interpolation-filters:sRGB">
+      <feFlood
+         id="feFlood4182"
+         result="flood"
+         flood-color="rgb(0,0,0)"
+         flood-opacity="0.498039" />
+      <feComposite
+         id="feComposite4184"
+         result="composite1"
+         operator="in"
+         in2="SourceGraphic"
+         in="flood" />
+      <feGaussianBlur
+         id="feGaussianBlur4186"
+         result="blur"
+         stdDeviation="3"
+         in="composite1" />
+      <feOffset
+         id="feOffset4188"
+         result="offset"
+         dy="5.6"
+         dx="0" />
+      <feComposite
+         id="feComposite4190"
+         result="composite2"
+         operator="over"
+         in2="offset"
+         in="SourceGraphic" />
+    </filter>
+    <filter
+       id="filter4230"
+       style="color-interpolation-filters:sRGB">
+      <feFlood
+         id="feFlood4232"
+         result="flood"
+         flood-color="rgb(0,0,0)"
+         flood-opacity="0.498039" />
+      <feComposite
+         id="feComposite4234"
+         result="composite1"
+         operator="in"
+         in2="SourceGraphic"
+         in="flood" />
+      <feGaussianBlur
+         id="feGaussianBlur4236"
+         result="blur"
+         stdDeviation="6"
+         in="composite1" />
+      <feOffset
+         id="feOffset4238"
+         result="offset"
+         dy="3"
+         dx="0" />
+      <feComposite
+         id="feComposite4240"
+         result="composite2"
+         operator="over"
+         in2="offset"
+         in="SourceGraphic" />
+    </filter>
+    <filter
+       id="filter4160"
+       style="color-interpolation-filters:sRGB">
+      <feFlood
+         id="feFlood4162"
+         result="flood"
+         flood-color="rgb(0,0,0)"
+         flood-opacity="0.498039" />
+      <feComposite
+         id="feComposite4164"
+         result="composite1"
+         operator="in"
+         in2="SourceGraphic"
+         in="flood" />
+      <feGaussianBlur
+         id="feGaussianBlur4166"
+         result="blur"
+         stdDeviation="4"
+         in="composite1" />
+      <feOffset
+         id="feOffset4168"
+         result="offset"
+         dy="2"
+         dx="0" />
+      <feComposite
+         id="feComposite4170"
+         result="composite2"
+         operator="over"
+         in2="offset"
+         in="SourceGraphic" />
+    </filter>
+    <filter
+       id="filter4795"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4797"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4799"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+    <filter
+       id="filter4801"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4803"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4805"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+    <filter
+       id="filter4807"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4809"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4811"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+    <filter
+       id="filter4813"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4815"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4817"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+    <filter
+       id="filter4819"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4821"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4823"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+    <filter
+       id="filter4825"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4827"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4829"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+    <filter
+       id="filter4831"
+       style="color-interpolation-filters:sRGB;">
+      <feColorMatrix
+         id="feColorMatrix4833"
+         result="color1"
+         values="330"
+         type="hueRotate" />
+      <feColorMatrix
+         id="feColorMatrix4835"
+         result="color2"
+         values="0"
+         type="saturate" />
+    </filter>
+  </defs>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     transform="translate(-181.47488,-224.92021)"
+     id="layer2">
+    <circle
+       r="200.96095"
+       cy="454.49048"
+       cx="382.43582"
+       id="path4158"
+       style="fill:#ffffff;fill-opacity:1;stroke:none;filter:url(#filter4795)" />
+  </g>
+  <g
+     transform="translate(-181.47488,-224.92021)"
+     id="layer1">
+    <path
+       id="path3344"
+       d="m 310.17352,500.05721 144.22174,-0.0795 2.5244,-21.47124 -133.78169,0.008 z"
+       style="fill:#cfcfcf;fill-rule:evenodd;stroke:none;stroke-width:0.57724309px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter4801);fill-opacity:1" />
+    <path
+       id="path3346"
+       d="m 323.03326,478.74413 c 0,0 30.27301,-74.95208 26.67729,-111.98707 -4.59039,-47.27985 -57.7243,-130.29201 -57.7243,-130.29201 0,0 93.12674,51.57398 122.04568,94.00816 28.93078,42.45156 42.88092,148.03159 42.88092,148.03159"
+       style="fill:#008900;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.57724309px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter4807)" />
+    <text
+       id="text3348"
+       y="583.9198"
+       x="315.64307"
+       style="font-style:normal;font-weight:normal;font-size:72.15538788px;line-height:125%;font-family:sans-serif;letter-spacing:0.74464363px;word-spacing:0px;fill:#787878;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter4813);"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:90px;font-family:arial;-inkscape-font-specification:'arial Bold';letter-spacing:7.99480915px;fill:#787878;fill-opacity:1;"
+         y="583.9198"
+         x="315.64307"
+         id="tspan3350">elf</tspan></text>
+    <flowRoot
+       transform="matrix(0.57724309,0,0,0.57724309,153.44791,161.88013)"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter4819)"
+       id="flowRoot3352"
+       xml:space="preserve"><flowRegion
+         id="flowRegion3354"><rect
+           y="820.93365"
+           x="-125.71429"
+           height="102.85714"
+           width="380"
+           id="rect3356" /></flowRegion><flowPara
+         id="flowPara3358" /></flowRoot>    <circle
+       r="18.966558"
+       cy="243.88676"
+       cx="296.10941"
+       id="path3374"
+       style="fill:#ffaa00;fill-opacity:1;filter:url(#filter4825)" />
+    <text
+       id="text4218"
+       y="545.82428"
+       x="395.78571"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;filter:url(#filter4831)"
+       xml:space="preserve"><tspan
+         y="545.82428"
+         x="395.78571"
+         id="tspan4220" /></text>
+  </g>
+</svg>
