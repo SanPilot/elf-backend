@@ -3,7 +3,7 @@
 </p>
 # Elf
 ### or, Epic Lab Form
-Backend interface for Elf.
+Backend for Elf.
 
 *by Hussain Khalil*
 

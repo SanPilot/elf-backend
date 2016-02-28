@@ -11,5 +11,8 @@
     "url": "ssh://localhost/home/hussain/Projects/.hosted/elf-backend"
   },
   "author": "Hussain Khalil",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "mongodb": "^2.1.7"
+  }
 }
