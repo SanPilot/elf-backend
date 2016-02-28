@@ -1,0 +1,15 @@
+{
+  "name": "elf-backend",
+  "version": "1.0.0",
+  "description": "Backend for elf",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://localhost/home/hussain/Projects/.hosted/elf-backend"
+  },
+  "author": "Hussain Khalil",
+  "license": "UNLICENSED"
+}
