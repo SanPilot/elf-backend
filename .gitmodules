@@ -1,0 +1,3 @@
+[submodule "meta"]
+	path = meta
+	url = ssh://hussain@73.5.198.122/home/hussain/Projects/.hosted/elf-meta
