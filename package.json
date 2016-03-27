@@ -13,6 +13,8 @@
   "author": "Hussain Khalil",
   "license": "UNLICENSED",
   "dependencies": {
+    "chalk": "^1.1.1",
+    "fs": "0.0.2",
     "mongodb": "^2.1.7"
   }
 }
