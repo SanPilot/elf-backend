@@ -1,0 +1,14 @@
+{
+  "moduleName": "Logger Daemon [CORE MODULE] (logger.daemon.core.js)",
+  "console": {
+    "logging": true,
+    "logLevel": 6
+  },
+  "file": {
+    "logging": true,
+    "logLevel": 6,
+    "logFile": "log.log",
+    "separateErrorLog": true,
+    "errorLogFile": "error.log"
+  }
+}
