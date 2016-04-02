@@ -5,7 +5,7 @@ Logger Daemon [CORE MODULE]
 "use strict";
 
 // Require config
-var config = require('./config/logger.daemon.core.config.json');
+var config = require('./config/logger.daemon.config.json');
 
 // Require modules
 var chalk = require('chalk'), fs = require('fs');
@@ -60,6 +60,6 @@ var log = function(message, logLevel, error, name) {
 exports.log = log;
 
 // Log stuff
-log("Logger Daemon [CORE MODULE] started and ready to go!", 3, false, config.moduleName);
+log("Logger Daemon [CORE MODULE] started and ready to go!", 4, false, config.moduleName);
 log("This is an example log message", 5, false, config.moduleName);
 log("This is an example error message", 5, true, config.moduleName);

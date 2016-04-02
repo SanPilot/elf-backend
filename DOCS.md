@@ -7,9 +7,7 @@
 ## Table of Contents
 * [Introduction](#introduction)
 * [The Modules](#the_modules)
-    * [APIs](#apis)
-    * [Daemons](#daemons)
-        * [Logger Daemon `CORE MODULE`](#logger_daemon)
+  * [Logger `DAEMON`](#logger)
 
 ## <a name="introduction"></a>Introduction
 At its simplest, the backend of Elf is constructed by a series of modules, which use NodeJS's (the language of the backend) module implementation.
@@ -17,15 +15,11 @@ At its simplest, the backend of Elf is constructed by a series of modules, which
 This paper contains documentation explaining each module and its usage, along with their respective configuration options.
 
 ## <a name="the_modules"></a>The Modules
+The modules are APIs which receive requests and complete the corresponding action. They are separated by their functions, which make the backend simple, modular, and easily maintainable.
 
-### <a name="apis"></a>APIs
-APIs are a subset of the modules. The APIs interact directly with the client, routing requests to their corresponding daemon modules.
+A subset of the APIs, called Daemons, have special core functionality required by the other modules. They are therefore started separately from the other modules. Below, the Daemons are distinguished from other modules with the `DAEMON` tag.
 
-### <a name="daemons"></a>Daemons
-Daemons, like APIs, are a category of modules. They recieve information from the APIs and complete the necessary task. Some of the Daemons, like the Logger Daemon, are core modules, or modules started seperately from other modules because they provide basic functionality required by the other modules.
-
-#### <a name="logger_daemon"></a>Logger Daemon
-`CORE MODULE` `DAEMON`
+### <a name="logger"></a>Logger `DAEMON`
 
 This module provides logging functionality. It is used to log information and errors to the console and to a log file.
 
@@ -41,4 +35,4 @@ This module provides logging functionality. It is used to log information and er
     * `separateErrorLog` (boolean) - log errors in separate files?
     * `errorLogFile` (string) - if above is true, file to log errors to
 
-*Last updated 26.03.2016*
+*Last updated 01.04.2016*
