@@ -7,6 +7,7 @@
 ## Table of Contents
 * [Introduction](#introduction)
 * [The Modules](#the_modules)
+  * [Index.js `DAEMON`](#indexjs)
   * [Logger `DAEMON`](#logger)
 
 ## <a name="introduction"></a>Introduction
@@ -18,6 +19,14 @@ This paper contains documentation explaining each module and its usage, along wi
 The modules are APIs which receive requests and complete the corresponding action. They are separated by their functions, which make the backend simple, modular, and easily maintainable.
 
 A subset of the APIs, called Daemons, have special core functionality required by the other modules. They are therefore started separately from the other modules. Below, the Daemons are distinguished from other modules with the `DAEMON` tag.
+
+### <a name="indexjs"></a>Index.js
+
+This is the base module. Starting the server requires running this file. It starts an Express.js HTTP server and begins to route API requests to the correlating API.
+
+*Config*
+
+* `usePort` (int) - what port should the HTTP server run on?
 
 ### <a name="logger"></a>Logger `DAEMON`
 
@@ -33,6 +42,6 @@ This module provides logging functionality. It is used to log information and er
     * `logLevel` (int) - see above
     * `logFile` (string) - file to log to
     * `separateErrorLog` (boolean) - log errors in separate files?
-    * `errorLogFile` (string) - if above is true, file to log errors to
+    * `errorLogFile` (string) - if above is true, file to log errors to this file
 
-*Last updated 01.04.2016*
+*Last updated 02.04.2016*
