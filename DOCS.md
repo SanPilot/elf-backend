@@ -1,7 +1,10 @@
 <p align="center">
 <img height="300" width="300" alt="Elf" src="meta/icons/elf-logo.min.svg" style="margin-bottom: 20px">
 </p>
-# Documentation for Elf Modules
+# Elf
+### or, Epic Lab Form
+Documentation for Elf Modules
+
 *by Hussain Khalil*
 
 ## Table of Contents
@@ -27,6 +30,10 @@ This is the base module. Starting the server requires running this file. It star
 *Config*
 
 * `usePort` (int) - what port should the HTTP server run on?
+* `requireModules` (object) - modules to require into the index script
+  * `modulename` (string) - file name of module source of module "modulename"
+* `apiRoutes` (object) - list of API routes
+  * `path` (array) - details for the route of each path: [HTTP Method, module, function]
 
 ### <a name="logger"></a>Logger `DAEMON`
 

@@ -1,5 +1,5 @@
 {
-  "moduleName": "Logger Daemon [CORE MODULE] (logger.daemon.core.js)",
+  "moduleName": "Logger Module [DAEMON] (logger.daemon.js)",
   "console": {
     "logging": true,
     "logLevel": 6

@@ -1,5 +1,5 @@
 /*
-Logger Daemon [CORE MODULE]
+Logger Module [DAEMON]
 */
 
 "use strict";
@@ -60,6 +60,6 @@ var log = function(message, logLevel, error, name) {
 exports.log = log;
 
 // Log stuff
-log("Logger Daemon [CORE MODULE] started and ready to go!", 4, false, config.moduleName);
+log("Logger Module [DAEMON] started and ready to go!", 4, false, config.moduleName);
 log("This is an example log message", 5, false, config.moduleName);
 log("This is an example error message", 5, true, config.moduleName);
