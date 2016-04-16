@@ -1,5 +1,5 @@
 <p align="center">
-<img height="300" width="300" alt="Elf" src="meta/icons/elf-logo.min.svg" style="margin-bottom: 20px">
+<img height="300" width="300" alt="Elf" src="meta/icons/elflogo2.svg" style="margin-bottom: 20px">
 </p>
 # Elf
 ### or, Epic Lab Form
