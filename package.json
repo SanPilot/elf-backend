@@ -1,7 +1,7 @@
 {
   "name": "elf-backend",
   "version": "1.0.0",
-  "description": "Backend for elf",
+  "description": "Backend for Elf",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -9,12 +9,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "ssh://localhost/home/hussain/Projects/.hosted/elf-backend"
+    "url": "http://73.5.198.122:3000/SanPilot/elf-backend.git"
   },
   "author": "Hussain Khalil",
   "license": "UNLICENSED",
   "dependencies": {
     "chalk": "^1.1.1",
+    "crypto": "0.0.3",
     "fs": "0.0.2",
     "helmet": "^1.3.0",
     "mongodb": "^2.1.7",
