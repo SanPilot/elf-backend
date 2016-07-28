@@ -5,11 +5,16 @@
     "messagesAllowedPerSecond": 2,
     "blockTime": 60000
   },
+  "connectionDelay": 2000,
   "requireModules": {
-    "users": "users.js"
+    "users": "users.js",
+    "tasks": "tasks.js"
   },
   "apiRoutes": {
     "getUsers": ["users", "getUsers"],
-    "auth": ["users", "auth"]
+    "auth": ["users", "auth"],
+    "createUser": ["users", "createUser"],
+    "removeUser": ["users", "removeUser"],
+    "addTask": ["tasks", "addTask"]
   }
 }
