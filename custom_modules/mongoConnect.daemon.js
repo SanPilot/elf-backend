@@ -8,7 +8,7 @@ Mongo Connect Module [DAEMON]
 var config = require('./config/mongoConnect.daemon.config.json'),
 MongoClient = require('mongodb').MongoClient,
 logger = global.logger;
-logger.log("Mongo Connect Module [DAEMON] started and ready to go!", 6, false, config.moduleName);
+logger.log("Mongo Connect Module [DAEMON] started and ready to go!", 4, false, config.moduleName);
 
 // Username and password
 var auth = "",

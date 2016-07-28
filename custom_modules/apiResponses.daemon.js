@@ -4,7 +4,7 @@ Default API responses
 
 var logger = global.logger;
 
-logger.log("API Responses Module [DAEMON] started and ready to go!", 6, false, "API Responses Module [DAEMON] (apiResponses.daemon.js)");
+logger.log("API Responses Module [DAEMON] started and ready to go!", 4, false, "API Responses Module [DAEMON] (apiResponses.daemon.js)");
 
 // Common API responses
 module.exports = {
@@ -39,6 +39,11 @@ module.exports = {
         "type": "response",
         "status": "failed",
         "error": "Authentication failed"
+      },
+      "userAlreadyExists": {
+        "type": "response",
+        "status": "failed",
+        "error": "User already exists"
       }
     },
     "success": {
@@ -67,3 +72,13 @@ for (var key in module.exports.JSON) {
     module.exports.strings[key] = JSON.stringify(module.exports.JSON[key]);
   }
 }
+
+module.exports.concatObj = (resp, concat, stringify) => {
+  var newObj = resp;
+  for(var key in concat) {
+    if(!concat.hasOwnProperty(key)) continue;
+    newObj[key] = concat[key];
+  }
+  if(stringify) newObj = JSON.stringify(newObj);
+  return newObj;
+};

@@ -10,14 +10,11 @@ var config = require('./config/logger.daemon.config.json');
 // Require modules
 var chalk = require('chalk'), fs = require('fs');
 
-// used for status later down
-var writeToFileStatus;
-
 // where to log errors
 var errorLogFile = (config.file.separateErrorLog ? config.file.errorLogFile : config.file.logFile);
 
 // function to write to file
-var writeToFile = function(message, useErrorFile) {
+var writeToFile = (message, useErrorFile) => {
   var path = (useErrorFile ? errorLogFile : config.file.logFile);
   fs.appendFile(path, message + "\n", (err) => {
     if(err) {
@@ -61,5 +58,3 @@ exports.log = log;
 
 // Log stuff
 log("Logger Module [DAEMON] started and ready to go!", 4, false, config.moduleName);
-log("This is an example log message", 5, false, config.moduleName);
-log("This is an example error message", 5, true, config.moduleName);
