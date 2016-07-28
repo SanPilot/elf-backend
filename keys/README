@@ -1,0 +1,9 @@
+** IMPORTANT **
+
+Make sure to regenerate these keys when deploying.
+
+With OpenSSL, do the following:
+
+$ openssl genrsa -out private.key 4096
+$ openssl rsa -in private.key -pubout -out public.pub
+
