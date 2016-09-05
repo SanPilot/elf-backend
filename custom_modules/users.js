@@ -109,6 +109,7 @@ var getObjectParts = (obj, parts, callback) => {
 
 // Return requested users
 exports.getUsers = (params, connection) => {
+  if(!params.users) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));}
   if(params.users.constructor !== Array) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
   for(var i = 0; i < params.users.length; i++) {
     if(typeof params.users[i] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
@@ -171,50 +172,49 @@ var dbMatches = (collection, query, callback) => {
 
 // Authenticate Users
 exports.auth = (params, connection) => {
-  if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
-  if(params.auth && params.auth[0] && params.auth[1]) {
-    dbMatches("users", {caselessUser:params.auth[0].toLowerCase()}, (result) => {
-      if(result.status) {
-        if(result.matches > 0) {
-          var queryCallback = (err, docs) => {
-            if(!err) {
-              if(!docs.active) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
-              passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
-                if(result.status) {
-                  if(docs.passwd === result.hashedPasswd) {
-                    var expires = Math.floor(new Date() / 1000) + 18000;
-                    connection.send(JSON.stringify({
-                      "type": "response",
-                      "status": "success",
-                      "id": params.id,
-                      "content": {
-                        "token": generateJWT({"user": docs.user, "iat": Math.floor(new Date() / 1000), "expires": expires}),
-                        "expires": expires
-                      }
-                    }));
-                  } else {
-                    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-                  }
-                } else {
-                  connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-                }
-              });
-            } else {
-              connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-              logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
-            }
-          }
-          global.mongoConnect.collection("users").find({caselessUser:params.auth[0].toLowerCase()}).limit(1).next(queryCallback);
-        } else {
-          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-        }
-      } else {
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-      }
-    });
-  } else {
+  if(!(params.auth && params.auth[0] && params.auth[1])) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
   }
+  if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
+  dbMatches("users", {caselessUser:params.auth[0].toLowerCase()}, (result) => {
+    if(result.status) {
+      if(result.matches > 0) {
+        var queryCallback = (err, docs) => {
+          if(!err) {
+            if(!docs.active) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
+            passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
+              if(result.status) {
+                if(docs.passwd === result.hashedPasswd) {
+                  var expires = Math.floor(new Date() / 1000) + 18000;
+                  connection.send(JSON.stringify({
+                    "type": "response",
+                    "status": "success",
+                    "id": params.id,
+                    "content": {
+                      "token": generateJWT({"user": docs.user, "iat": Math.floor(new Date() / 1000), "expires": expires}),
+                      "expires": expires
+                    }
+                  }));
+                } else {
+                  connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+                }
+              } else {
+                connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+              }
+            });
+          } else {
+            connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          }
+        }
+        global.mongoConnect.collection("users").find({caselessUser:params.auth[0].toLowerCase()}).limit(1).next(queryCallback);
+      } else {
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+      }
+    } else {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+    }
+  });
 }
 
 // Function to create salt
@@ -224,53 +224,51 @@ var generateSalt = () => {
 
 // Add a user to the DB
 exports.createUser = (params, connection) => {
+  if(!params.create || !params.create[0] || !params.create[1] || !params.create[2] || !params.create[3]) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));}
   if(typeof params.create[0] !== "string" || typeof params.create[1] !== "string" || typeof params.create[2] !== "string" || typeof params.create[3] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
-  if(params.create && params.create[0] && params.create[1] && params.create[2] && params.create[3]) {
-    var user = params.create[0],
-    name = params.create[1],
-    passwd = params.create[2],
-    email = params.create[3];
+  var user = params.create[0],
+  name = params.create[1],
+  passwd = params.create[2],
+  email = params.create[3];
 
-    dbMatches("users", {caselessUser:params.create[0].toLowerCase()}, (result) => {
-      if(result.status) {
-        // Check if user already exists
-        if(result.matches === 0) {
+  dbMatches("users", {caselessUser:params.create[0].toLowerCase()}, (result) => {
+    if(result.status) {
+      // Check if user already exists
+      if(result.matches === 0) {
 
-          // Generate Salt
-          var salt = generateSalt();
+        // Generate Salt
+        var salt = generateSalt();
 
-          // Hash password
-          passwdHash(passwd, user, salt, (result) => {
-            if(result.status) {
-              // Insert new user into db
-              global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true}, (err) => {
-                if(!err) {
-                  connection.send(JSON.stringify({
-                    "type": "response",
-                    "status": "success",
-                    "id": params.id,
-                    "content": generateJWT({"user": user, "iat": Math.floor(new Date() / 1000), "expires": Math.floor(new Date() / 1000) + 18000})
-                  }));
-                  logger.log("Added new user '" + user + "'.", 6, false, config.moduleName);
-                } else {
-                  logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
-                  connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-                }
-              });
-            } else {
-              connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-            }
-          });
-        } else {
-          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.userAlreadyExists, {"id": params.id}, true));
-        }
+        // Hash password
+        passwdHash(passwd, user, salt, (result) => {
+          if(result.status) {
+            // Insert new user into db
+            global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true}, (err) => {
+              if(!err) {
+                connection.send(JSON.stringify({
+                  "type": "response",
+                  "status": "success",
+                  "id": params.id,
+                  "content": generateJWT({"user": user, "iat": Math.floor(new Date() / 1000), "expires": Math.floor(new Date() / 1000) + 18000})
+                }));
+                logger.log("Added new user '" + user + "'.", 6, false, config.moduleName);
+              } else {
+                logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+                connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+              }
+            });
+          } else {
+            connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+          }
+        });
       } else {
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.userAlreadyExists, {"id": params.id}, true));
       }
-    });
-  } else {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
-  }
+    } else {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+    }
+  });
+}
 }
 
 // Remove a user from the db
