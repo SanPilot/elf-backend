@@ -1,5 +1,5 @@
 <p align="center">
-<img height="300" width="300" alt="Elf" src="meta/icons/elflogo2.svg" style="margin-bottom: 20px">
+<img height="300" width="300" alt="Elf" src="https://git.sanpilot.co/SanPilot/elf-meta/raw/master/icons/elflogo2.svg" style="margin-bottom: 20px" type="image/svg+xml">
 </p>
 # Elf
 ### or, Epic Lab Form
