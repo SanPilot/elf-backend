@@ -269,7 +269,6 @@ exports.createUser = (params, connection) => {
     }
   });
 }
-}
 
 // Remove a user from the db
 exports.removeUser = (params, connection) => {
