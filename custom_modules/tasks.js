@@ -11,5 +11,14 @@ users = require("./users.js");
 
 // Function to add a task
 exports.addTask = (params, connection) => {
-  if(!params.JWT) {}
+  if(!params.JWT) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
 }
