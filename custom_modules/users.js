@@ -109,52 +109,48 @@ var getObjectParts = (obj, parts, callback) => {
 
 // Return requested users
 exports.getUsers = (params, connection) => {
-  if(!params.users) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));}
+  if(!(params.users && params.JWT)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
   if(params.users.constructor !== Array) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
   for(var i = 0; i < params.users.length; i++) {
     if(typeof params.users[i] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
   }
-  if(params.users && params.JWT) {
-    if(verifyJWT(params.JWT)) {
-      var getUsers = params.users,
-      resArray = [],
-      queryFailed,
-      queryCallback = (err, docs, last) => {
-        if(!err) {
-          getObjectParts(docs, ["user", "caselessUser", "name", "email", "active"], (resultObj) => {
-            resArray.push(resultObj);
-          });
-        } else {
-          queryFailed = true;
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
-        }
-        if(last) {
-          if(!queryFailed) {
-            connection.send(JSON.stringify({
-              "type": "response",
-              "status": "success",
-              "id": params.id,
-              "content": resArray
-            }));
-          } else {
-            connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-          }
-        }
-      };
-
-      // Get info for each user in the array
-      for(var iu = 0; iu < getUsers.length; iu++) {
-        global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
-          if(docs == null) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
-          queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
+  if(verifyJWT(params.JWT)) {
+    var getUsers = params.users,
+    resArray = [],
+    queryFailed,
+    queryCallback = (err, docs, last) => {
+      if(!err) {
+        getObjectParts(docs, ["user", "caselessUser", "name", "email", "active"], (resultObj) => {
+          resArray.push(resultObj);
         });
+      } else {
+        queryFailed = true;
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
       }
-    } else {
-      logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
-      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+      if(last) {
+        if(!queryFailed) {
+          connection.send(JSON.stringify({
+            "type": "response",
+            "status": "success",
+            "id": params.id,
+            "content": resArray
+          }));
+        } else {
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        }
+      }
+    };
+
+    // Get info for each user in the array
+    for(var iu = 0; iu < getUsers.length; iu++) {
+      global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
+        if(docs == null) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
+        queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
+      });
     }
   } else {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
   }
 };
 
