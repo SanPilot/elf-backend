@@ -22,7 +22,7 @@
 
   "asi"           : true,
   "laxbreak"      : true,
-  "bitwise"       : true,
+  "bitwise"       : false,
   "boss"          : false,
   "curly"         : false,
   "eqeqeq"        : true,
