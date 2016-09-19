@@ -57,22 +57,31 @@ var getTokenInfo = (JWT) => {
 
 exports.getTokenInfo = getTokenInfo;
 
+// Function for checking how many results match a query to the DB
+var dbMatches = (collection, query, callback) => {
+  global.mongoConnect.collection(collection).find(query).toArray((err, docs) => {
+    if(!err) {
+      callback({"status":true,"matches":docs.length});
+    } else {
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      callback({"status":false});
+    }
+  });
+}
+
 // Function to verify authentication token
 var verifyJWT = (JWT) => {
   var token = {};
   JWT = getTokenInfo(JWT);
-  if(JWT) {
-    token.header = JWT.header;
-    token.payload = JWT.payload;
-    token.signature = JWT.signature;
-    token.body = JWT.body;
+  if(!JWT) return false;
+  token.header = JWT.header;
+  token.payload = JWT.payload;
+  token.signature = JWT.signature;
+  token.body = JWT.body;
 
-    // Make sure token is valid
-    if(token.payload.user && token.payload.expires > Math.floor(new Date() / 1000) && verifySig(token.body, token.signature)) {
-      return true;
-    } else {
-      return false;
-    }
+  // Make sure token is valid
+  if(token.payload.user && token.payload.expires > Math.floor(new Date() / 1000) && verifySig(token.body, token.signature)) {
+    return true;
   } else {
     return false;
   }
@@ -144,7 +153,7 @@ exports.getUsers = (params, connection) => {
     // Get info for each user in the array
     for(var iu = 0; iu < getUsers.length; iu++) {
       global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
-        if(docs == null) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
+        if(!docs) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
         queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
       });
     }
@@ -153,18 +162,6 @@ exports.getUsers = (params, connection) => {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
   }
 };
-
-// Function for checking how many result match a query to the DB
-var dbMatches = (collection, query, callback) => {
-  global.mongoConnect.collection(collection).find(query).toArray((err, docs) => {
-    if(!err) {
-      callback({"status":true,"matches":docs.length});
-    } else {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
-      callback({"status":false});
-    }
-  });
-}
 
 // Authenticate Users
 exports.auth = (params, connection) => {
@@ -226,6 +223,12 @@ exports.createUser = (params, connection) => {
   name = params.create[1],
   passwd = params.create[2],
   email = params.create[3];
+
+  // Make sure parameters are good
+  if(!(/^[A-Za-z0-9_-]+$/ig.test(user) && /^[A-Za-z ]+$/ig.test(name) && /^.+[@＠].+/ig.test(email))) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {id: params.id}, true));
+    return;
+  }
 
   dbMatches("users", {caselessUser:params.create[0].toLowerCase()}, (result) => {
     if(result.status) {
