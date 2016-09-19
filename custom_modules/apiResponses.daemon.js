@@ -44,6 +44,11 @@ module.exports = {
         "type": "response",
         "status": "failed",
         "error": "User already exists"
+      },
+      "invalidField": {
+        "type": "response",
+        "status": "failed",
+        "error": "Invalid Field"
       }
     },
     "success": {
