@@ -167,6 +167,7 @@ exports.getUsers = (params, connection) => {
 exports.auth = (params, connection) => {
   if(!(params.auth && params.auth[0] && params.auth[1])) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
   }
   if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
   dbMatches("users", {caselessUser:params.auth[0].toLowerCase()}, (result) => {
@@ -217,7 +218,7 @@ var generateSalt = () => {
 
 // Add a user to the DB
 exports.createUser = (params, connection) => {
-  if(!params.create || !params.create[0] || !params.create[1] || !params.create[2] || !params.create[3]) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));}
+  if(!params.create || !params.create[0] || !params.create[1] || !params.create[2] || !params.create[3]) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
   if(typeof params.create[0] !== "string" || typeof params.create[1] !== "string" || typeof params.create[2] !== "string" || typeof params.create[3] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
   var user = params.create[0],
   name = params.create[1],

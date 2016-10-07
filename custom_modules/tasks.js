@@ -46,7 +46,7 @@ exports.addTask = (params, connection) => {
     return;
   }
   var num = 10;
-  if(!(params.task.constructor === {}.constructor && (params.task.project.constructor === num.constructor || params.task.project.constructor === "".constructor) && params.task.appliedForPriority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles === [].constructor)) {
+  if(!(params.task.constructor === {}.constructor && (params.task.project.constructor === num.constructor || params.task.project.constructor === "".constructor) && params.task.appliedForPriority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === [].constructor)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
     return;
   }
