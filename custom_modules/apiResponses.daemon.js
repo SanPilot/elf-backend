@@ -2,60 +2,14 @@
 Default API responses
 */
 
-var logger = global.logger;
+var logger = global.logger,
+config = require('./config/apiResponses.daemon.config.json');
 
-logger.log("API Responses Module [DAEMON] started and ready to go!", 4, false, "API Responses Module [DAEMON] (apiResponses.daemon.js)");
+logger.log("API Responses Module [DAEMON] started and ready to go!", 4, false, config.moduleName);
 
 // Common API responses
 module.exports = {
-  "JSON": {
-    "errors": {
-      "malformedRequest": {
-        "type": "response",
-        "status": "failed",
-        "error": "Malformed request"
-      },
-      "invalidAction": {
-        "type": "response",
-        "status": "failed",
-        "error": "Invalid action"
-      },
-      "tooManyRequests": {
-        "type": "response",
-        "status": "failed",
-        "error": "Too many requests"
-      },
-      "missingParameters": {
-        "type": "response",
-        "status": "failed",
-        "error": "Missing parameters"
-      },
-      "failed": {
-        "type": "response",
-        "status": "failed",
-        "error": "Failed"
-      },
-      "authFailed": {
-        "type": "response",
-        "status": "failed",
-        "error": "Authentication failed"
-      },
-      "userAlreadyExists": {
-        "type": "response",
-        "status": "failed",
-        "error": "User already exists"
-      },
-      "invalidField": {
-        "type": "response",
-        "status": "failed",
-        "error": "Invalid Field"
-      }
-    },
-    "success": {
-      "type": "response",
-      "status": "success"
-    }
-  },
+  "JSON": config.responses,
   "strings": {}
 };
 
