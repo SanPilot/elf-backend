@@ -58,7 +58,7 @@ exports.addTask = (params, connection) => {
   try {
     var parsedBody = parseTaskBody(params.task.body);
     var createdAt = new Date().getTime();
-    var id = createdAt + ":" + crypto.createHash('sha256').update(parsedBody.body).digest('hex');
+    var id = crypto.createHash('sha256').update(createdAt + ":" + parsedBody.body).digest('hex');
     var task = {
       id: id,
       createdAt: createdAt,
@@ -97,5 +97,46 @@ exports.addTask = (params, connection) => {
     logger.log("Error trying to create task. (" + e + ")", 2, true, config.moduleName);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
     return;
+  }
+}
+
+// Function to list tasks
+exports.listTasks = (params, connection) => {
+  if(!(params.request)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(!(params.request.constructor === {}.constructor && (!params.request.ids || params.request.ids.constructor === [].constructor) && (!params.request.users || params.request.users.constructor === [].constructor))) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  // Get the tasks that the user wants
+  var getIDs, getUserTasks;
+  if(params.request.ids) {
+    getIDs = params.request.ids;
+  }
+  if(params.request.users) {
+    getUserTasks = params.request.users;
+  }
+  if(!(getIDs || getUserTasks)) {
+    global.mongoConnect.collection("tasks").find({}).toArray((err, docs) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      connection.send(JSON.stringify({
+        type: "response",
+        status: "success",
+        id: params.id,
+        content: docs
+      }));
+    });
   }
 }
