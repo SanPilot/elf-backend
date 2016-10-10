@@ -151,11 +151,24 @@ exports.getUsers = (params, connection) => {
     };
 
     // Get info for each user in the array
-    for(var iu = 0; iu < getUsers.length; iu++) {
-      global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
-        if(!docs) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
-        queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
+    if(!getUsers.length) {
+      global.mongoConnect.collection("users").find({}).toArray((err, docs) => {
+        if(err) {
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+          return;
+        }
+        for(var iu = 0; iu < docs.length; iu++) {
+          queryCallback(err, docs[iu], iu === docs.length - 1)
+        }
       });
+    } else {
+      for(var iu = 0; iu < getUsers.length; iu++) {
+        global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
+          if(!docs) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
+          queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
+        });
+      }
     }
   } else {
     logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
