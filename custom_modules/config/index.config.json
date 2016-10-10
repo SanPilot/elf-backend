@@ -15,6 +15,7 @@
     "auth": ["users", "auth"],
     "createUser": ["users", "createUser"],
     "removeUser": ["users", "removeUser"],
-    "addTask": ["tasks", "addTask"]
+    "addTask": ["tasks", "addTask"],
+    "listTasks": ["tasks", "listTasks"]
   }
 }
