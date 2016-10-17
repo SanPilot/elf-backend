@@ -152,7 +152,7 @@ exports.getUsers = (params, connection) => {
 
     // Get info for each user in the array
     if(!getUsers.length) {
-      global.mongoConnect.collection("users").find({}).toArray((err, docs) => {
+      global.mongoConnect.collection("users").find({active:true}).toArray((err, docs) => {
         if(err) {
           logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
