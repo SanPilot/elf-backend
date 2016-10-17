@@ -27,6 +27,7 @@ MongoClient.connect(url, (err, db) => {
     logger.log("Successfully connected to database at " + url + ".", 4, false, config.moduleName);
   } else {
     logger.log("Could not connect to database at " + url + ". Is the database running? (" + err + ")", 1, true, config.moduleName);
+    process.exit(1);
   }
   global.mongoConnect = db;
 });
