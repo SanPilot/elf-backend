@@ -2,7 +2,6 @@
 Tasks Module
 */
 
-
 // Require files
 var apiResponses = global.apiResponses,
 logger = global.logger,
@@ -22,12 +21,16 @@ var parseTaskBody = (body) => {
   });
 
   // search for @mentions
-  var mentionRegex = /\B[@＠][A-Za-z0-9_-]+/gi;
+  var mentionRegex = /\B[@＠]([A-Za-z0-9_-]+)/gi;
+
+  var mentionsRaw = [], match;
+  while(match = mentionRegex.exec(parsedBody)) {
+    mentionsRaw.push(match[1])
+  }
 
   // get list of @mentions
-  var mentionsRaw = parsedBody.match(mentionRegex);
   var mentions = [];
-  for(var i = 0; i < mentions.length; i++) {
+  for(var i = 0; i < mentionsRaw.length; i++) {
     if(!~mentions.indexOf(mentionsRaw[i])) {
       mentions.push(mentionsRaw[i]);
     }
@@ -39,21 +42,20 @@ var parseTaskBody = (body) => {
   }
 }
 
-// Function to add a task
-exports.addTask = (params, connection) => {
-  if(!(params.JWT && params.task && params.task.project && params.task.appliedForPriority !== null && params.task.body && params.task.attachedFiles)) {
+var generateTaskBody = (params, connection) => {
+  if(!(params.JWT && params.task && params.task.project && params.task.appliedForPriority !== undefined && params.task.body && params.task.attachedFiles)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
-    return;
+    return false;
   }
   var num = 10;
   if(!(params.task.constructor === {}.constructor && (params.task.project.constructor === num.constructor || params.task.project.constructor === "".constructor) && params.task.appliedForPriority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === [].constructor)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
-    return;
+    return false;
   }
   if(!users.verifyJWT(params.JWT)) {
     logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-    return;
+    return false;
   }
   try {
     var parsedBody = parseTaskBody(params.task.body);
@@ -66,38 +68,57 @@ exports.addTask = (params, connection) => {
       project: params.task.project,
       appliedForPriority: params.task.appliedForPriority,
       approvedPriority: false,
-      body: parsedBody.body
+      markedAsDone: false,
+      edited: false,
+      body: parsedBody.body,
+      mentions: parsedBody.mentions
     }
-
-    // Send @mention notification
-    for(var i = 0; i < parsedBody.mentions.length; i++) {
-      notify.sendNotification({
-        type: "taskmention",
-        from: users.getTokenInfo(params.JWT).payload.user,
-        taskId: id
-      }, parsedBody.mentions[i]);
+    return {
+      parsedBody: parsedBody,
+      id: id,
+      task: task
     }
-
-    // Insert this new task into the database
-    global.mongoConnect.collection("tasks").insertOne(task, (err) => {
-      if(err) {
-        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-        return;
-      }
-      logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName);
-      connection.send(JSON.stringify({
-        type: "response",
-        status: "success",
-        id: params.id,
-        content: task
-      }));
-    });
   } catch(e) {
     logger.log("Error trying to create task. (" + e + ")", 2, true, config.moduleName);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+    return false;
+  }
+}
+
+// Function to add a task
+exports.addTask = (params, connection) => {
+  var generated = generateTaskBody(params, connection);
+  if(generated === false) {
     return;
   }
+  var parsedBody = generated.parsedBody,
+  id = generated.id,
+  task = generated.task;
+
+  // Send @mention notification
+  for(var i = 0; i < parsedBody.mentions.length; i++) {
+    notify.sendNotification({
+      type: "taskmention",
+      from: users.getTokenInfo(params.JWT).payload.user,
+      taskId: id
+    }, parsedBody.mentions[i]);
+  }
+
+  // Insert this new task into the database
+  global.mongoConnect.collection("tasks").insertOne(task, (err) => {
+    if(err) {
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName);
+    connection.send(JSON.stringify({
+      type: "response",
+      status: "success",
+      id: params.id,
+      content: task
+    }));
+  });
 }
 
 // Function to list tasks
@@ -139,4 +160,83 @@ exports.listTasks = (params, connection) => {
       }));
     });
   }
+}
+
+// modifyTask - method to modify already created task
+exports.modifyTask = (params, connection) => {
+  if(!((params.modifyId && params.modifyId.constructor === "".constructor) && (params.done === undefined || params.done.constructor === true.constructor))) {
+    if(!params.modifyId) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+      return;
+    } else if(params.modifyId.constructor !== "".constructor) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
+      return;
+    } else if(params.done.constructor !== true.constructor) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
+      return;
+    }
+  }
+
+  var id = params.modifyId;
+
+  // Fetch the task with this id
+  global.mongoConnect.collection("tasks").find({"id":id}).limit(1).toArray((err, docs) => {
+    if(err) {
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    if(!docs.length) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    var task = docs[0],
+    generated = generateTaskBody(params, connection);
+    if(generated === false) {
+      return;
+    }
+    var parsedBody = generated.parsedBody;
+
+    if(params.done === undefined) params.done = task.markedAsDone;
+
+    // The final modified task
+    var newTask = {
+      id: id,
+      createdAt: new Date().getTime(),
+      user: task.user,
+      project: params.task.project,
+      appliedForPriority: params.task.appliedForPriority,
+      approvedPriority: task.approvedPriority,
+      markedAsDone: params.done,
+      edited: true,
+      body: parsedBody.body,
+      mentions: parsedBody.mentions
+    }
+
+    // Send notifications to the newly mentioned users
+    for(var i = 0; i < parsedBody.mentions.length; i++) {
+      if(!~task.mentions.indexOf(parsedBody.mentions[i])) continue; // Make sure people who were already notified aren't nofified again
+      notify.sendNotification({
+        type: "taskmention",
+        from: users.getTokenInfo(params.JWT).payload.user,
+        taskId: id
+      }, parsedBody.mentions[i]);
+    }
+
+    // Update this task in the db
+    global.mongoConnect.collection("tasks").updateOne({id:id},{$set:newTask}).then((r) => {
+      if(!r.result.ok) {
+        logger.log("Failed database query. (" + r + ")", 2, true, config.moduleName);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      logger.log("Updated task. (ID:" + newTask.id + ")", 6, false, config.moduleName);
+      connection.send(JSON.stringify({
+        type: "response",
+        status: "success",
+        id: params.id,
+        content: newTask
+      }));
+    });
+  });
 }
