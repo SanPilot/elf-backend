@@ -164,10 +164,12 @@ exports.getUsers = (params, connection) => {
       });
     } else {
       for(var iu = 0; iu < getUsers.length; iu++) {
+        var iterationStop = false;
         global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
-          if(!docs) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); return;}
+          if(!docs) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); iterationStop = true; return;}
           queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
         });
+        if(iterationStop) return;
       }
     }
   } else {
