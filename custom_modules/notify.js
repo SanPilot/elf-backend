@@ -9,5 +9,5 @@ users = require("./users.js");
 
 // Function to send users notifications
 exports.sendNotification = (notification, user) => {
-  
+  global.mongoConnect.collection("users");
 }

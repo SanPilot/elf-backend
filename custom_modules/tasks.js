@@ -65,13 +65,15 @@ var generateTaskBody = (params, connection) => {
       id: id,
       createdAt: createdAt,
       user: users.getTokenInfo(params.JWT).payload.user,
+      caselessUser: users.getTokenInfo(params.JWT).payload.user.toLowerCase,
       project: params.task.project,
       appliedForPriority: params.task.appliedForPriority,
       approvedPriority: false,
       markedAsDone: false,
       edited: false,
       body: parsedBody.body,
-      mentions: parsedBody.mentions
+      mentions: parsedBody.mentions,
+      attachedFiles: params.task.attachedFiles
     }
     return {
       parsedBody: parsedBody,
@@ -138,13 +140,9 @@ exports.listTasks = (params, connection) => {
   }
 
   // Get the tasks that the user wants
-  var getIDs, getUserTasks;
-  if(params.request.ids) {
-    getIDs = params.request.ids;
-  }
-  if(params.request.users) {
-    getUserTasks = params.request.users;
-  }
+  var getIDs = (params.request.ids ? params.request.ids : false), getUserTasks = (params.request.users ? params.request.users : false);
+  getIDs = (getIDs.length ? getIDs : false);
+  getUserTasks = (getUserTasks.length ? getUserTasks : false);
   if(!(getIDs || getUserTasks)) {
     global.mongoConnect.collection("tasks").find({}).toArray((err, docs) => {
       if(err) {
@@ -159,6 +157,40 @@ exports.listTasks = (params, connection) => {
         content: docs
       }));
     });
+  } else {
+    var resArray = [], iterationStop = false;
+    for(var idsi = 0; idsi < getIDs.length; idsi++) {
+      global.mongoConnect.collection("tasks").find({id: getIDs[idsi]}).limit(1).toArray((err, docs) => {
+        if(err || !docs.length) {
+          if(err) logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+          iterationStop = true;
+          return;
+        }
+        resArray.push(docs[0]);
+        if(idsi === resArray.length && !getUserTasks) {
+          connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, content: resArray}, true));
+        }
+      });
+      if(iterationStop) return;
+    }
+    for(var usersi = 0; usersi < getUserTasks.length; usersi++) {
+      global.mongoConnect.collection("tasks").find({caselessUser: getUserTasks[usersi].toLowerCase}).limit(1).toArray((err, docs) => {
+        if(err || !docs.length) {
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+          iterationStop = true;
+          return;
+        }
+        resArray.push(docs[0]);
+        if(usersi === resArray.length) {
+          setTimeout(() => {
+            connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, content: resArray}, true));
+          }, 20);
+        }
+      });
+      if(iterationStop) return;
+    }
   }
 }
 
@@ -204,13 +236,15 @@ exports.modifyTask = (params, connection) => {
       id: id,
       createdAt: new Date().getTime(),
       user: task.user,
+      caselessUser: task.caselessUser,
       project: params.task.project,
       appliedForPriority: params.task.appliedForPriority,
       approvedPriority: task.approvedPriority,
       markedAsDone: params.done,
       edited: true,
       body: parsedBody.body,
-      mentions: parsedBody.mentions
+      mentions: parsedBody.mentions,
+      attachedFiles: params.task.attachedFiles
     }
 
     // Send notifications to the newly mentioned users
