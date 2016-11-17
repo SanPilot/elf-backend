@@ -1,5 +1,5 @@
 {
-  "moduleName": "Mongo Connect Module [DAEMON] (mongo-connect.daemon.js)",
+  "moduleName": "Mongo Connect Module [DAEMON] (mongoConnect.daemon.js)",
   "dbAddress": "127.0.0.1",
   "dbPort": 27017,
   "useDB": "elf",
