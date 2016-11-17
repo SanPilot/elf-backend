@@ -7,7 +7,7 @@ var apiResponses = global.apiResponses,
 logger = global.logger,
 config = require("./config/tasks.config.json"),
 users = require("./users.js"),
-notify = require("./notify.js"),
+notify = require("./notify.daemon.js"),
 xss = require('xss'),
 crypto = require('crypto');
 
@@ -209,6 +209,14 @@ exports.modifyTask = (params, connection) => {
     }
   }
 
+  if(!users.verifyJWT(params.JWT)) {
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  var user = users.getTokenInfo(params.JWT).payload.user;
+
   var id = params.modifyId;
 
   // Fetch the task with this id
@@ -222,39 +230,58 @@ exports.modifyTask = (params, connection) => {
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
-    var task = docs[0],
-    generated = generateTaskBody(params, connection);
-    if(generated === false) {
-      return;
-    }
-    var parsedBody = generated.parsedBody;
+    var task = docs[0], newTask, successFunction;
 
-    if(params.done === undefined) params.done = task.markedAsDone;
+    if(task.caselessUser === user) {
+      var generated = generateTaskBody(params, connection);
+      if(generated === false) {
+        return;
+      }
+      var parsedBody = generated.parsedBody;
 
-    // The final modified task
-    var newTask = {
-      id: id,
-      createdAt: new Date().getTime(),
-      user: task.user,
-      caselessUser: task.caselessUser,
-      project: params.task.project,
-      appliedForPriority: params.task.appliedForPriority,
-      approvedPriority: task.approvedPriority,
-      markedAsDone: params.done,
-      edited: true,
-      body: parsedBody.body,
-      mentions: parsedBody.mentions,
-      attachedFiles: params.task.attachedFiles
-    }
+      if(params.done === undefined) params.done = task.markedAsDone;
 
-    // Send notifications to the newly mentioned users
-    for(var i = 0; i < parsedBody.mentions.length; i++) {
-      if(!~task.mentions.indexOf(parsedBody.mentions[i])) continue; // Make sure people who were already notified aren't nofified again
-      notify.sendNotification({
-        type: "taskmention",
-        from: users.getTokenInfo(params.JWT).payload.user,
-        taskId: id
-      }, parsedBody.mentions[i]);
+      // The final modified task
+      newTask = {
+        id: id,
+        createdAt: new Date().getTime(),
+        user: task.user,
+        caselessUser: task.caselessUser,
+        project: params.task.project,
+        appliedForPriority: params.task.appliedForPriority,
+        approvedPriority: task.approvedPriority,
+        markedAsDone: params.done,
+        edited: true,
+        body: parsedBody.body,
+        mentions: parsedBody.mentions,
+        attachedFiles: params.task.attachedFiles
+      }
+
+      // Send notifications to the newly mentioned users
+      successFunction = () => {
+        for(var i = 0; i < parsedBody.mentions.length; i++) {
+          if(!~task.mentions.indexOf(parsedBody.mentions[i])) continue; // Make sure people who were already notified aren't nofified again
+          notify.sendNotification({
+            type: "taskmention",
+            from: user,
+            taskId: id
+          }, parsedBody.mentions[i]);
+        }
+      }
+    } else {
+      if(params.task !== undefined || params.done === undefined || params.done.constructor !== true.constructor || params.done === task.markedAsDone) {
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      successFunction = () => {
+        notify.sendNotification({
+          type: (params.done ? "taskclosed" : "taskreopened"),
+          from: user,
+          taskId: id
+        }, task.user);
+      };
+      newTask = task;
+      newTask.markedAsDone = params.done;
     }
 
     // Update this task in the db
@@ -264,7 +291,8 @@ exports.modifyTask = (params, connection) => {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
-      logger.log("Updated task. (ID:" + newTask.id + ")", 6, false, config.moduleName);
+      logger.log("Updated task. (ID:" + id + ")", 6, false, config.moduleName);
+      successFunction();
       connection.send(JSON.stringify({
         type: "response",
         status: "success",
