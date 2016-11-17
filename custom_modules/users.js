@@ -69,6 +69,8 @@ var dbMatches = (collection, query, callback) => {
   });
 }
 
+exports.dbMatches = dbMatches;
+
 // Function to verify authentication token
 var verifyJWT = (JWT) => {
   var token = {};
