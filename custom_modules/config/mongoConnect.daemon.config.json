@@ -7,5 +7,10 @@
     "credentials": true,
     "user": "admin",
     "pwd": "54b8617eca0e54c7d3c8e6732c6b687a"
+  },
+  "DBCheck": {
+    "enabled": true,
+    "maxAttempts": 10,
+    "interval": 60000
   }
 }

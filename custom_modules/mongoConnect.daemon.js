@@ -31,3 +31,30 @@ MongoClient.connect(url, (err, db) => {
   }
   global.mongoConnect = db;
 });
+
+// Periodic check for connection to database
+var checkDBConnection = (attempt) => {
+  attempt = attempt || 0;
+  var killScript = false;
+  if(attempt > config.DBCheck.maxAttempts - 1) killScript = true;
+  MongoClient.connect(url, (err, db) => {
+    if(err || db === null) {
+      logger.log("DBCheck failed. Is the database running? (" + err + ")" + (!killScript ? " Trying again..." : " Killing process."), 1, true, config.moduleName);
+      if(!killScript) {
+        setTimeout(() => {checkDBConnection(++attempt)}, 5000);
+        return;
+      } else {
+        process.exit(1);
+        return;
+      }
+    } else {
+      logger.log("DBCheck successful.", 3, false, config.moduleName);
+      db.close();
+      return;
+    }
+  });
+}
+
+if(config.DBCheck.enabled) {
+  setInterval(checkDBConnection, config.DBCheck.interval);
+}
