@@ -36,7 +36,7 @@ MongoClient.connect(url, (err, db) => {
 var checkDBConnection = (attempt) => {
   attempt = attempt || 0;
   var killScript = false;
-  if(attempt > config.DBCheck.maxAttempts - 1) killScript = true;
+  if(attempt > config.DBCheck.maxAttempts - 2) killScript = true;
   MongoClient.connect(url, (err, db) => {
     if(err || db === null) {
       logger.log("DBCheck failed. Is the database running? (" + err + ")" + (!killScript ? " Trying again..." : " Killing process."), 1, true, config.moduleName);
@@ -48,7 +48,7 @@ var checkDBConnection = (attempt) => {
         return;
       }
     } else {
-      logger.log("DBCheck successful.", 3, false, config.moduleName);
+      logger.log("DBCheck successful.", 6, false, config.moduleName);
       db.close();
       return;
     }
