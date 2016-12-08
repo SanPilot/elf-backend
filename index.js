@@ -58,6 +58,9 @@ wsServer.on('request', (request) => {
       messagesInLastSecond = 0;
     }, 1000);
 
+    // Container for connection variables
+    var conVars = {};
+
     // accept message
     connection.on('message', (message) => {
       if(++messagesInLastSecond > config.freqBlock.messagesAllowedPerSecond) {
@@ -79,7 +82,7 @@ wsServer.on('request', (request) => {
           if(msgObject.id) {
             if(msgObject.action) {
               if(config.apiRoutes[msgObject.action]) {
-                apis[config.apiRoutes[msgObject.action][0]][config.apiRoutes[msgObject.action][1]](msgObject, connection);
+                apis[config.apiRoutes[msgObject.action][0]][config.apiRoutes[msgObject.action][1]](msgObject, connection, conVars);
               } else {
                 connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidAction, {"id": msgObject.id}, true));
                 return;

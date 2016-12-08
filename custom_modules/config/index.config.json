@@ -9,7 +9,8 @@
   "requireModules": {
     "users": "users.js",
     "tasks": "tasks.js",
-    "notify": "notify.daemon.js"
+    "notify": "notify.daemon.js",
+    "fileStorage": "fileStorage.js"
   },
   "apiRoutes": {
     "getUsers": ["users", "getUsers"],
