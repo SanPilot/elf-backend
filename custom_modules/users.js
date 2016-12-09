@@ -7,7 +7,9 @@ var apiResponses = global.apiResponses,
 logger = global.logger,
 fs = require('fs'),
 crypto = require('crypto'),
-config = require('./config/users.config.json');
+config = require('./config/users.config.json'),
+sanitize = require('sanitize-filename'),
+fileStorage = require('./fileStorage.js');
 
 // Function for password hashing
 var passwdHash = (passwd, user, salt, callback) => {
@@ -181,7 +183,7 @@ exports.getUsers = (params, connection) => {
 };
 
 // Authenticate Users
-exports.auth = (params, connection) => {
+var auth = (params, connection) => {
   if(!(params.auth && params.auth[0] && params.auth[1])) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return;
@@ -196,7 +198,7 @@ exports.auth = (params, connection) => {
             passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
               if(result.status) {
                 if(docs.passwd === result.hashedPasswd) {
-                  var expires = Math.floor(new Date() / 1000) + 18000;
+                  var expires = Math.floor(new Date() / 1000) + 3600;
                   connection.send(JSON.stringify({
                     "type": "response",
                     "status": "success",
@@ -227,6 +229,7 @@ exports.auth = (params, connection) => {
     }
   });
 }
+exports.auth = auth;
 
 // Function to create salt
 var generateSalt = () => {
@@ -247,6 +250,10 @@ exports.createUser = (params, connection) => {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {id: params.id}, true));
     return;
   }
+  if(sanitize(user) !== user) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidUser, {id: params.id}, true));
+    return;
+  }
 
   dbMatches("users", {caselessUser:params.create[0].toLowerCase()}, (result) => {
     if(result.status) {
@@ -262,13 +269,9 @@ exports.createUser = (params, connection) => {
             // Insert new user into db
             global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true}, (err) => {
               if(!err) {
-                connection.send(JSON.stringify({
-                  "type": "response",
-                  "status": "success",
-                  "id": params.id,
-                  "content": generateJWT({"user": user, "iat": Math.floor(new Date() / 1000), "expires": Math.floor(new Date() / 1000) + 18000})
-                }));
+                fileStorage.createDirs(user);
                 logger.log("Added new user '" + user + "'.", 6, false, config.moduleName);
+                auth({auth:[user,passwd]});
               } else {
                 logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
                 connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));

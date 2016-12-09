@@ -40,7 +40,12 @@
       "invalidField": {
         "type": "response",
         "status": "failed",
-        "error": "Invalid Field"
+        "error": "Invalid field"
+      },
+      "invalidUser": {
+        "type": "response",
+        "status": "failed",
+        "error": "Invalid username"
       }
     },
     "success": {
