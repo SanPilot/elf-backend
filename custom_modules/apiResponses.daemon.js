@@ -13,24 +13,38 @@ module.exports = {
   "strings": {}
 };
 
-// Loop through and stringify each one
-for (var key in module.exports.JSON) {
-
-  // skip loop if the property is from prototype
-  if (!module.exports.JSON.hasOwnProperty(key)) continue;
-
-  if(module.exports.JSON[key] !== null && typeof module.exports.JSON[key] === 'object') {
-    for (var obj in module.exports.JSON[key]) {
-
-      // skip loop if the property is from prototype
-      if (!module.exports.JSON[key].hasOwnProperty(obj)) continue;
-      if(module.exports.strings[key] == null) module.exports.strings[key] = {};
-      module.exports.strings[key][obj] = JSON.stringify(module.exports.JSON[key][obj]);
-    }
-  } else {
-    module.exports.strings[key] = JSON.stringify(module.exports.JSON[key]);
+// This is a function to tell if an object contains more objects, it is used above
+var isMultiDimen = (object) => {
+  // Loop through the object
+  for(var key in object) {
+    // Skip loop if the property is from prototype
+    if(!object.hasOwnProperty(key)) continue;
+    if(object[key].constructor === {}.constructor) return true; // There is at least one object in this object. Return true
   }
+  return false; // There were no objects in the object
 }
+
+// This is a recursive function to turn each JSON response into a stringify-ed version
+var stringify = (object) => {
+  var result = {};
+  // Loop through the elements of the object
+  for(var key in object) {
+    // Skip loop if the property is from prototype
+    if(!object.hasOwnProperty(key)) continue;
+
+    // Check if this object has more objects
+    if(isMultiDimen(object[key])) {
+      result[key] = stringify(object[key]); // Stringify each of this object's objects
+    } else {
+      result[key] = JSON.stringify(object[key]); // Stringify this object
+    }
+  }
+  return result;
+};
+
+// Convert the JSON object to a stringify-ed version
+module.exports.strings = stringify(module.exports.JSON);
+console.log(module.exports);
 
 module.exports.concatObj = (resp, concat, stringify) => {
   var newObj = resp;
