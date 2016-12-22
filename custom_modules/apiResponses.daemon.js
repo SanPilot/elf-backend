@@ -44,7 +44,6 @@ var stringify = (object) => {
 
 // Convert the JSON object to a stringify-ed version
 module.exports.strings = stringify(module.exports.JSON);
-console.log(module.exports);
 
 module.exports.concatObj = (resp, concat, stringify) => {
   var newObj = resp;
