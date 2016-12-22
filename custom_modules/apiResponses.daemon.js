@@ -13,7 +13,7 @@ module.exports = {
   "strings": {}
 };
 
-// This is a function to tell if an object contains more objects, it is used above
+// This is a function to tell if an object contains more objects, it is used below
 var isMultiDimen = (object) => {
   // Loop through the object
   for(var key in object) {
