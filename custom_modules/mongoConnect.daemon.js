@@ -48,7 +48,6 @@ var checkDBConnection = (attempt) => {
         return;
       }
     } else {
-      logger.log("DBCheck successful.", 6, false, config.moduleName);
       db.close();
       return;
     }
