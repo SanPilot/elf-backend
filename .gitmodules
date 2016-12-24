@@ -1,0 +1,3 @@
+[submodule "meta"]
+	path = meta
+	url = https://git.sanpilot.co/SanPilot/elf-meta
