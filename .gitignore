@@ -3,3 +3,4 @@ node_modules
 *.key
 *.pub
 create-backup.sh
+filestorage

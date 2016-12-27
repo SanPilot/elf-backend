@@ -1,6 +1,7 @@
 {
   "moduleName": "Index.js (index.js)",
   "usePort": 3000,
+  "maxMessageSize": 1000000,
   "freqBlock": {
     "messagesAllowedPerSecond": 5,
     "blockTime": 10000
@@ -20,6 +21,11 @@
     "addTask": ["tasks", "addTask"],
     "listTasks": ["tasks", "listTasks"],
     "modifyTask": ["tasks", "modifyTask"],
-    "getNotifications": ["notify", "getNotifications"]
+    "getNotifications": ["notify", "getNotifications"],
+    "createUpload": ["fileStorage", "createUpload"],
+    "finalizeUpload": ["fileStorage", "finalizeUpload"]
+  },
+  "specialConnections": {
+    "fileupload": ["fileStorage", "upload"]
   }
 }

@@ -8,7 +8,10 @@ fs = require('fs'),
 apiResponses = global.apiResponses,
 crypto = require('crypto'),
 config = require("./config/fileStorage.config.json"),
-sanitize = require('sanitize-filename');
+maxMessageSize = require("./config/index.config.json").maxMessageSize,
+sanitize = require('sanitize-filename'),
+users = require('./users.js'),
+uploadsList = {};
 
 // Helper function to create required directories
 var createDirs = (user) => {
@@ -55,3 +58,215 @@ exports.createDirs = createDirs;
 
 // Run this function when the script starts to ensure directory is present
 createDirs();
+
+// Create the upload identifier
+exports.createUpload = (params, connection) => {
+  if(!(params.JWT && params.file && params.file.name && params.file.size !== undefined && params.file.type)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(!(params.file.constructor === {}.constructor && params.file.name.constructor === "".constructor && params.file.size.constructor === 10['constructor'] && params.file.size > 0 && params.file.type.constructor === "".constructor)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+  var user = users.getTokenInfo(params.JWT).payload.user;
+  var createdAt = Math.floor(new Date() / 1000);
+  var id = crypto.createHash('sha256').update(params.file.name + ":" + user + createdAt).digest('hex');
+
+  var uploadObj = {
+    id: id,
+    fileName: sanitize(params.file.name),
+    user: user,
+    createdAt: createdAt,
+    size: params.file.size,
+    mimetype: params.file.type
+  }
+
+  // Create the file
+  var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
+  fs.writeFile(filename, "", (err) => {
+    if(err) {
+      logger.log("There was an error creating a file for writing in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+
+    // Add this to the list of uploads
+    uploadsList[id] = uploadObj;
+
+    // Send this back to the user
+    connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "upload": uploadObj, "maxMessageSize": maxMessageSize}, true));
+  });
+}
+
+// Function to finalize upload, adding the file to the database
+exports.finalizeUpload = (params, connection) => {
+  if(!(params.fileId && params.fileId.constructor === "".constructor && uploadsList[params.fileId])) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors[(!params.fileId ? 'missingParameters' : 'malformedRequest')], {"id": params.id}, true));
+    return;
+  }
+
+  var uploadObj = uploadsList[params.fileId];
+  var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
+
+  // Check if the file size matches the entry file size
+  fs.stat(filename, (err, stats) => {
+    if(err) {
+      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName);      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+
+    // If the size doesn't match, refuse the upload
+    if(stats.size !== uploadObj.size) {
+      connection.send(JSON.stringify({
+        type: 'response',
+        status: 'failed',
+        error: 'Incorrect size'
+      }));
+      return;
+    }
+
+    // Add this file to the DB
+    global.mongoConnect.collection("files").insertOne(uploadsList[params.fileId], (err, r) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+
+      // Remove the upload from the list
+      uploadsList[params.fileId] = undefined;
+
+      // Send the result back to the user
+      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
+    });
+  });
+}
+
+// The upload function handles a special connection. It recieves binary data and appends it to the correct file.
+exports.upload = (connection) => {
+  connection.on('message', (message) => {
+    // If the upload has been removed from the list, disassociate the connection with the upload
+    if(!uploadsList[connection.selectedUploadId]) {
+      connection.selectedUploadId = undefined;
+    }
+
+    // We need to know which upload this is
+    if(!connection.selectedUploadId) {
+      if(message.type === 'utf8' && uploadsList[message.utf8Data]) {
+        connection.selectedUploadId = message.utf8Data;
+        connection.send(apiResponses.strings.success);
+      } else {
+        connection.send(JSON.stringify({
+          type: 'response',
+          status: 'failed',
+          error: 'No upload selected'
+        }));
+      }
+      return;
+    }
+
+    var uploadObj = uploadsList[connection.selectedUploadId];
+    var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + connection.selectedUploadId;
+
+    // Recieve binary data and add it to file
+    if(message.type === 'binary') {
+      // Append this data to the file
+      fs.appendFile(filename, message.binaryData, (err) => {
+        if(err) {
+          logger.log("There was an error writing to a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+          connection.send(apiResponses.strings.errors.failed);
+          return;
+        }
+        // See if the new size of the file is too large
+        fs.stat(filename, (err, stats) => {
+          if(err) {
+            logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+            return;
+          }
+          // If it is, delete the upload
+          if(stats.size > uploadObj.size) {
+            connection.selectedUploadId = undefined;
+            uploadsList[uploadObj.id] = undefined;
+            connection.send(JSON.stringify({
+              type: 'response',
+              status: 'failed',
+              error: 'File size too large'
+            }));
+            return;
+          }
+          connection.send(apiResponses.strings.success);
+        });
+      })
+    } else {
+      connection.send(apiResponses.strings.errors.malformedRequest);
+    }
+  });
+}
+
+// A function used in the deleteAbandoned function below
+var checkAndDelete = (filename, file) => {
+  fs.stat(filename, (err, stats) => {
+    if(err) {
+      // There's nothing we can do, just log and quit
+      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      return;
+    }
+    if(Math.floor((new Date() - stats.mtime) / 1000) > config.maxUploadTime) {
+      // This file was last modified over the specified maxUploadTime, if it is abandoned, delete it
+      global.mongoConnect.collection("files").findOne({id: file}, (err, doc) => {
+        if(err) {
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          return;
+        }
+        if(doc === null) {
+          // This file is abandoned, delete it
+          fs.unlink(filename, (err) => {
+            if(err) {
+              logger.log("There was an error removing a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+              return;
+            }
+            // Remove the file if it exists in the upload list
+            if(uploadsList[file]) {
+              uploadsList[file] = undefined;
+            }
+          });
+        }
+      });
+    }
+  });
+}
+
+// Maintenance function to delete abandoned uploads
+var deleteAbandoned = (attempt, user, directory) => {
+  attempt = attempt || 0;
+  user = user || false;
+  directory = (user ? config.directoryLocation + "/" + directory : config.directoryLocation);
+  if(attempt > 5) return; // There seems to be an issue, just give up
+  fs.readdir(directory, (err, files) => {
+    if(err) {
+      logger.log("There was an error reading the files in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      deleteAbandoned(++attempt, user, directory);
+      return;
+    }
+    for(var i = 0; i < files.length; i++) {
+      if(!user) {
+        // We're in the filestorage directory; run the function for the user directory
+        deleteAbandoned(0, true, files[i]);
+      } else {
+        // We're in the user directory; delete the file if it is abandoned
+        var file = files[i];
+        var filename = directory + "/" + file;
+        checkAndDelete(filename, file);
+      }
+    }
+  });
+}
+
+// Run this function every minute
+setInterval(deleteAbandoned, 60000);
