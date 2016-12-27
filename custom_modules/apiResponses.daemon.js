@@ -45,12 +45,9 @@ var stringify = (object) => {
 // Convert the JSON object to a stringify-ed version
 module.exports.strings = stringify(module.exports.JSON);
 
+// This is a function to combine two objects, and optionally stringify them
 module.exports.concatObj = (resp, concat, stringify) => {
-  var newObj = resp;
-  for(var key in concat) {
-    if(!concat.hasOwnProperty(key)) continue;
-    newObj[key] = concat[key];
-  }
+  var newObj = Object.assign({}, resp, concat);
   if(stringify) newObj = JSON.stringify(newObj);
   return newObj;
 };
