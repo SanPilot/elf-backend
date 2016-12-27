@@ -59,7 +59,7 @@ var generateTaskBody = (params, connection) => {
   }
   try {
     var parsedBody = parseTaskBody(params.task.body);
-    var createdAt = new Date().getTime();
+    var createdAt = Math.floor(new Date() / 1000);
     var id = crypto.createHash('sha256').update(createdAt + ":" + parsedBody.body).digest('hex');
     var task = {
       id: id,
@@ -244,7 +244,7 @@ exports.modifyTask = (params, connection) => {
       // The final modified task
       newTask = {
         id: id,
-        createdAt: new Date().getTime(),
+        createdAt: Math.floor(new Date() / 1000),
         user: task.user,
         caselessUser: task.caselessUser,
         project: params.task.project,

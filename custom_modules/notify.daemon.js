@@ -12,7 +12,7 @@ config = require("./config/notify.daemon.config.json");
 var sendNotification = (notification, user, callback, attempt) => {
   attempt = attempt || 1;
   if(attempt > 10) return;
-  notification.timestamp = new Date().getTime();
+  notification.timestamp = Math.floor(new Date() / 1000);
   global.mongoConnect.collection("users").find({caselessUser: user.toLowerCase}).toArray((err, docs) => {
     if(err) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
