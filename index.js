@@ -42,14 +42,19 @@ server.listen(config.usePort, () => {
 
 // Start WebSocket server
 var wsServer = new webSocketServer({
-  httpServer: server
+  httpServer: server,
+  maxReceivedFrameSize: config.maxMessageSize,
+  maxRecievedMessageSize: config.maxMessageSize
 });
 
 wsServer.on('request', (request) => {
   setTimeout(() => {
     logger.log("Recieved API connection from origin " + request.origin + ".", 6, false, config.moduleName);
     var connection = request.accept(null, request.origin);
-    // limit messages per minute
+
+    var firstMessageSent = false;
+
+    // limit messages per second
     var messagesInLastSecond = 0,
     freqBlock = false;
 
@@ -58,11 +63,15 @@ wsServer.on('request', (request) => {
       messagesInLastSecond = 0;
     }, 1000);
 
-    // Container for connection variables
-    var conVars = {};
-
     // accept message
     connection.on('message', (message) => {
+      // Special ping/pong messaging to determine connectivity
+      if(message.type === "utf8" && message.utf8Data === "ping") {
+        connection.send("pong");
+        // And that's it!
+        return;
+      }
+
       if(++messagesInLastSecond > config.freqBlock.messagesAllowedPerSecond) {
         freqBlock = true;
         setTimeout(() => {
@@ -71,6 +80,22 @@ wsServer.on('request', (request) => {
         logger.log("Possibly malacious requests blocked for being too frequent from " + connection.remoteAddress + ".", 4, true, config.moduleName);
       }
       if(!freqBlock) {
+        if(connection.isSpecialConnection) return; // This is a special connection, don't respond to the message
+        if(!firstMessageSent && message.type === 'utf8' && config.specialConnections[message.utf8Data]) {
+          var specReg = config.specialConnections[message.utf8Data];
+          // This request is a special request. Hand it off to be used by the module:
+          apis[specReg[0]][specReg[1]](connection);
+
+          // Respond to the message
+          connection.send(apiResponses.strings.success);
+
+          // Set a flag
+          connection.isSpecialConnection = true;
+
+          // End this function
+          return;
+        }
+        firstMessageSent = true;
         if (message.type === 'utf8') {
           var msgObject;
           try {
@@ -82,7 +107,8 @@ wsServer.on('request', (request) => {
           if(msgObject.id) {
             if(msgObject.action) {
               if(config.apiRoutes[msgObject.action]) {
-                apis[config.apiRoutes[msgObject.action][0]][config.apiRoutes[msgObject.action][1]](msgObject, connection, conVars);
+                // This is the handoff - where the message is send to the registered (via config file) module with these three params.
+                apis[config.apiRoutes[msgObject.action][0]][config.apiRoutes[msgObject.action][1]](msgObject, connection);
               } else {
                 connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidAction, {"id": msgObject.id}, true));
                 return;
