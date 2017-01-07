@@ -23,9 +23,12 @@
     "modifyTask": ["tasks", "modifyTask"],
     "getNotifications": ["notify", "getNotifications"],
     "createUpload": ["fileStorage", "createUpload"],
-    "finalizeUpload": ["fileStorage", "finalizeUpload"]
+    "finalizeUpload": ["fileStorage", "finalizeUpload"],
+    "fileInfo": ["fileStorage", "fileInfo"],
+    "createDownload": ["fileStorage", "createDownload"]
   },
   "specialConnections": {
-    "fileupload": ["fileStorage", "upload"]
+    "fileupload": ["fileStorage", "upload"],
+    "filedownload": ["fileStorage", "download"]
   }
 }

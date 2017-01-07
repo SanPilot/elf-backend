@@ -11,7 +11,9 @@ config = require("./config/fileStorage.config.json"),
 maxMessageSize = require("./config/index.config.json").maxMessageSize,
 sanitize = require('sanitize-filename'),
 users = require('./users.js'),
-uploadsList = {};
+uploadsList = {},
+downloadsList = {},
+maxSize = 4294967295;
 
 // Helper function to create required directories
 var createDirs = (user) => {
@@ -65,8 +67,17 @@ exports.createUpload = (params, connection) => {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return;
   }
-  if(!(params.file.constructor === {}.constructor && params.file.name.constructor === "".constructor && params.file.size.constructor === 10['constructor'] && params.file.size > 0 && params.file.type.constructor === "".constructor)) {
+  if(!(params.file.constructor === {}.constructor && params.file.name.constructor === "".constructor && params.file.size.constructor === Number && params.file.size > 0 && params.file.type.constructor === "".constructor)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(params.file.size > maxSize) {
+    connection.send(JSON.stringify({
+      type: 'response',
+      status: 'failed',
+      error: 'File too large',
+      id: params.id
+    }));
     return;
   }
   if(!users.verifyJWT(params.JWT)) {
@@ -90,7 +101,7 @@ exports.createUpload = (params, connection) => {
   var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
   fs.writeFile(filename, "", (err) => {
     if(err) {
-      logger.log("There was an error creating a file for writing in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      logger.log("There was an error opening a file for writing in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -150,6 +161,8 @@ exports.finalizeUpload = (params, connection) => {
 
 // The upload function handles a special connection. It recieves binary data and appends it to the correct file.
 exports.upload = (connection) => {
+  // Variable to determine if server is ready to accept next message
+  var acceptReady = true;
   connection.on('message', (message) => {
     // If the upload has been removed from the list, disassociate the connection with the upload
     if(!uploadsList[connection.selectedUploadId]) {
@@ -176,8 +189,18 @@ exports.upload = (connection) => {
 
     // Recieve binary data and add it to file
     if(message.type === 'binary') {
+      if(!acceptReady) {
+        connection.send(JSON.stringify({
+          type: 'response',
+          status: 'failed',
+          error: 'Server not ready'
+        }));
+        return;
+      }
+      acceptReady = false;
       // Append this data to the file
       fs.appendFile(filename, message.binaryData, (err) => {
+        acceptReady = true;
         if(err) {
           logger.log("There was an error writing to a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
           connection.send(apiResponses.strings.errors.failed);
@@ -270,3 +293,154 @@ var deleteAbandoned = (attempt, user, directory) => {
 
 // Run this function every minute
 setInterval(deleteAbandoned, 60000);
+
+// Function to retrieve file information
+exports.fileInfo = (params, connection) => {
+  if(!(params.JWT && params.fileId)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(params.fileId.constructor !== String) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  // See if the file exists
+  global.mongoConnect.collection("files").findOne({id: params.fileId}, (err, doc) => {
+    if(err) {
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    if(doc === null) {
+      // The upload doesn't exist
+      connection.send(JSON.stringify({
+        type: 'response',
+        status: 'failed',
+        error: 'File does not exist',
+        id: params.id
+      }));
+      return;
+    }
+    connection.send(JSON.stringify({
+      type: 'response',
+      status: 'success',
+      file: doc,
+      id: params.id
+    }));
+  });
+}
+
+// Function create a download identifier
+exports.createDownload = (params, connection) => {
+  if(!(params.JWT && params.fileId)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(params.fileId.constructor !== String) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  // See if the file exists
+  global.mongoConnect.collection("files").findOne({id: params.fileId}, (err, doc) => {
+    if(err) {
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    if(doc === null) {
+      // The upload doesn't exist
+      connection.send(JSON.stringify({
+        type: 'response',
+        status: 'failed',
+        error: 'File does not exist',
+        id: params.id
+      }));
+      return;
+    }
+
+    // Get the file path
+    var filename = config.directoryLocation + "/" + doc.user + "/" + doc.id;
+
+    // Read the file and send the data
+    fs.readFile(filename, (err, data) => {
+      if(err) {
+        logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      
+      var pieces = [];
+
+      // If the file is too large, it will need to be sliced
+      if(data.byteLength > maxMessageSize) {
+        var numPieces = Math.ceil(data.byteLength / maxMessageSize);
+        for(var i = 0; i < numPieces; i++) {
+          pieces[i] = data.slice(maxMessageSize * i, (maxMessageSize * i) + maxMessageSize);
+        }
+      } else {
+        pieces = [data];
+      }
+
+      // Create the download identifier
+      var user = users.getTokenInfo(params.JWT).payload.user;
+      var time = Math.floor(new Date() / 1000);
+      var id = crypto.createHash('sha256').update(doc.id + ":" + user + time).digest('hex');
+      downloadsList[id] = {
+        id: id,
+        user: user,
+        time: time,
+        pieces: pieces,
+        numPieces: pieces.length
+      }
+
+      // Everything is good; send a success message
+      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "pieces": pieces.length, "download": id}, true));
+    });
+  });
+}
+
+// Special connection - send file to client
+exports.download = (connection) => {
+  connection.on('message', (message) => {
+    // If the download has been removed from the list, disassociate the connection with the download
+    if(!downloadsList[connection.selectedDownloadId]) {
+      connection.selectedDownloadId = undefined;
+    }
+
+    // We need to know which download this is
+    if(!connection.selectedDownloadId) {
+      if(message.type === 'utf8' && downloadsList[message.utf8Data]) {
+        connection.selectedDownloadId = message.utf8Data;
+        connection.send(apiResponses.strings.success);
+      } else {
+        connection.send(JSON.stringify({
+          type: 'response',
+          status: 'failed',
+          error: 'No download selected'
+        }));
+      }
+      return;
+    }
+
+    var downloadObj = downloadsList[connection.selectedDownloadId];
+
+    // Send the requested piece
+    if(message.type === 'utf8' && (+message.utf8Data).constructor === Number && downloadObj.pieces[(+message.utf8Data)]) {
+      connection.send(downloadObj.pieces[(+message.utf8Data)]);
+      return;
+    }
+
+    // We couldn't figure out what the client wanted
+    connection.send(apiResponses.strings.errors.malformedRequest);
+  });
+}
