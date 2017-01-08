@@ -133,7 +133,7 @@ exports.getUsers = (params, connection) => {
     queryFailed,
     queryCallback = (err, docs, last) => {
       if(!err) {
-        getObjectParts(docs, ["user", "caselessUser", "name", "email", "active"], (resultObj) => {
+        getObjectParts(docs, ["user", "caselessUser", "name", "email", "active", "miscKeys"], (resultObj) => {
           resArray.push(resultObj);
         });
       } else {
@@ -239,18 +239,19 @@ var generateSalt = () => {
 // Add a user to the DB
 exports.createUser = (params, connection) => {
   if(!params.create || !params.create[0] || !params.create[1] || !params.create[2] || !params.create[3]) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
-  if(typeof params.create[0] !== "string" || typeof params.create[1] !== "string" || typeof params.create[2] !== "string" || typeof params.create[3] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
+  if(typeof params.create[0] !== "string" || typeof params.create[1] !== "string" || typeof params.create[2] !== "string" || typeof params.create[3] !== "string" || !(params.create[4] === undefined || params.create[4].constructor === Object)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
   var user = params.create[0],
   name = params.create[1],
   passwd = params.create[2],
-  email = params.create[3];
+  email = params.create[3],
+  miscKeys = params.create[3] || {};
 
   // Make sure parameters are good
   if(!(/^[A-Za-z0-9_-]+$/ig.test(user) && /^[A-Za-z ]+$/ig.test(name) && /^.+[@＠].+/ig.test(email))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {id: params.id}, true));
     return;
   }
-  if(sanitize(user) !== user) {
+  if(sanitize(user) !== user || !(/^[A-Za-z0-9_-]+$/ig.test(user))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidUser, {id: params.id}, true));
     return;
   }
@@ -267,7 +268,7 @@ exports.createUser = (params, connection) => {
         passwdHash(passwd, user, salt, (result) => {
           if(result.status) {
             // Insert new user into db
-            global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true}, (err) => {
+            global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true, miscKeys:miscKeys}, (err) => {
               if(!err) {
                 fileStorage.createDirs(user);
                 logger.log("Added new user '" + user + "'.", 6, false, config.moduleName);
