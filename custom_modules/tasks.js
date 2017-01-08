@@ -110,11 +110,11 @@ var checkArray = (array, type) => {
 
 // This function is the common code between addTask and modifyTask - it checks all the variables then creates the task's body
 var generateTaskBody = (params, connection) => {
-  if(!(params.JWT && params.task && params.task.project && params.task.appliedForPriority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags)) {
+  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return false;
   }
-  if(!(params.task.constructor === {}.constructor && params.task.project.constructor === String && params.task.appliedForPriority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === Array && checkArray(params.task.attachedFiles, String) && params.task.tags.constructor === Array && checkArray(params.task.tags, String))) {
+  if(!(params.task.constructor === {}.constructor && params.task.project.constructor === String && params.task.priority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === Array && checkArray(params.task.attachedFiles, String) && params.task.tags.constructor === Array && checkArray(params.task.tags, String))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
     return false;
   }
@@ -141,8 +141,7 @@ var generateTaskBody = (params, connection) => {
       user: users.getTokenInfo(params.JWT).payload.user,
       caselessUser: users.getTokenInfo(params.JWT).payload.user.toLowerCase,
       project: params.task.project,
-      appliedForPriority: params.task.appliedForPriority,
-      approvedPriority: false,
+      priority: params.task.priority,
       markedAsDone: false,
       edited: false,
       body: parsedBody.body,
@@ -323,8 +322,7 @@ exports.modifyTask = (params, connection) => {
         user: task.user,
         caselessUser: task.caselessUser,
         project: params.task.project,
-        appliedForPriority: params.task.appliedForPriority,
-        approvedPriority: task.approvedPriority,
+        priority: params.task.priority,
         markedAsDone: params.done,
         edited: true,
         body: parsedBody.body,
