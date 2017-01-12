@@ -63,7 +63,7 @@ exports.getTokenInfo = getTokenInfo;
 var dbMatches = (collection, query, callback) => {
   global.mongoConnect.collection(collection).find(query).toArray((err, docs) => {
     if(!err) {
-      callback({"status":true,"matches":docs.length});
+      callback({"status":true,"matches": docs.length});
     } else {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
       callback({"status":false});
@@ -238,16 +238,16 @@ var generateSalt = () => {
 
 // Add a user to the DB
 exports.createUser = (params, connection) => {
-  if(!params.create || !params.create[0] || !params.create[1] || !params.create[2] || !params.create[3]) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
-  if(typeof params.create[0] !== "string" || typeof params.create[1] !== "string" || typeof params.create[2] !== "string" || typeof params.create[3] !== "string" || !(params.create[4] === undefined || params.create[4].constructor === Object)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
-  var user = params.create[0],
-  name = params.create[1],
-  passwd = params.create[2],
-  email = params.create[3],
-  miscKeys = params.create[3] || {};
+  if(!params.create || !params.create.user || !params.create.name || !params.create.passwd || !params.create.email) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
+  if(typeof params.create.user !== "string" || typeof params.create.name !== "string" || typeof params.create.passwd !== "string" || typeof params.create.email !== "string" || !(params.create.miscKeys === undefined || params.create.miscKeys.constructor === Object)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
+  var user = params.create.user,
+  name = params.create.name,
+  passwd = params.create.passwd,
+  email = params.create.email,
+  miscKeys = params.create.miscKeys || {};
 
   // Make sure parameters are good
-  if(!(/^[A-Za-z0-9_-]+$/ig.test(user) && /^[A-Za-z ]+$/ig.test(name) && /^.+[@＠].+/ig.test(email))) {
+  if(!(/^[A-Za-z ]+$/ig.test(name) && /^.+[@＠].+/ig.test(email))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {id: params.id}, true));
     return;
   }
@@ -256,7 +256,7 @@ exports.createUser = (params, connection) => {
     return;
   }
 
-  dbMatches("users", {caselessUser:params.create[0].toLowerCase()}, (result) => {
+  dbMatches("users", {caselessUser:params.create.user.toLowerCase()}, (result) => {
     if(result.status) {
       // Check if user already exists
       if(result.matches === 0) {
@@ -272,7 +272,7 @@ exports.createUser = (params, connection) => {
               if(!err) {
                 fileStorage.createDirs(user);
                 logger.log("Added new user '" + user + "'.", 6, false, config.moduleName);
-                auth({auth:[user,passwd]});
+                auth({auth:[user,passwd]}, connection);
               } else {
                 logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
                 connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -290,6 +290,67 @@ exports.createUser = (params, connection) => {
     }
   });
 }
+
+// Modify an existing user
+exports.modifyUser = (params, connection) => {
+  if(!(params.JWT && params.modify)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
+  if(!(params.modify.constructor === Object && (params.modify.name === undefined || params.modify.name.constructor === String) && (params.modify.passwd === undefined || params.modify.passwd.constructor === String) && (params.modify.email === undefined || params.modify.email.constructor === String) && (params.modify.miscKeys === undefined || params.modify.miscKeys.constructor === Object))) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+    return;
+  }
+  if(!verifyJWT(params.JWT)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
+
+  // Get the existing user information from the db
+  var user = getTokenInfo(params.JWT).payload.user;
+  global.mongoConnect.collection("users").findOne({caselessUser:user.toLowerCase()}, (err, doc) => {
+    if(err || doc === undefined) {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      }
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    var name = params.modify.name || doc.name,
+    email = params.modify.email || doc.email,
+    miscKeys = params.modify.miscKeys || doc.miscKeys,
+    modPass = params.modify.passwd !== undefined,
+    passwd = (modPass ? params.modify.passwd : doc.passwd),
+    salt = (passwd === undefined ? doc.salt : generateSalt()),
+    hashCallback = (result) => {
+      if(!result.status) {
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+
+      // Make sure parameters are good
+      if(!(/^[A-Za-z ]+$/ig.test(name) && /^.+[@＠].+/ig.test(email))) {
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {id: params.id}, true));
+        return;
+      }
+
+      // Update the user
+      global.mongoConnect.collection("users").updateOne({user:user}, {$set: {name: name, email: email, miscKeys: miscKeys, passwd: result.hashedPasswd, salt: salt}}, (err) => {
+        if(!err) {
+          logger.log("Modified user '" + user + "'.", 6, false, config.moduleName, __line, __file);
+          if(modPass) {
+            auth({auth:[user,passwd]}, connection);
+          } else {
+            apiResponses.concatObj(connection.send(apiResponses.JSON.success), {id: params.id}, true);
+          }
+        } else {
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        }
+      });
+    };
+    // Execute this function depending on if the password is to be changed or not
+    if(modPass) {
+      passwdHash(params.modify.passwd, user, salt, hashCallback);
+    } else {
+      hashCallback({status:true, hashedPasswd:passwd});
+    }
+  });
+};
 
 // Remove a user from the db
 exports.removeUser = (params, connection) => {
@@ -323,4 +384,4 @@ exports.removeUser = (params, connection) => {
       }
     });
   });
-}
+};
