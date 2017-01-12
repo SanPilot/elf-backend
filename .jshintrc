@@ -1,4 +1,8 @@
 {
+  "globals": {
+    "__line": true,
+    "__file": true
+  },
   "passfail"      : false,
   "maxerr"        : 100,
 
