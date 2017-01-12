@@ -65,7 +65,7 @@ var dbMatches = (collection, query, callback) => {
     if(!err) {
       callback({"status":true,"matches": docs.length});
     } else {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       callback({"status":false});
     }
   });
@@ -138,7 +138,7 @@ exports.getUsers = (params, connection) => {
         });
       } else {
         queryFailed = true;
-        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       }
       if(last) {
         if(!queryFailed) {
@@ -158,7 +158,7 @@ exports.getUsers = (params, connection) => {
     if(!getUsers.length) {
       global.mongoConnect.collection("users").find({active:true}).toArray((err, docs) => {
         if(err) {
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
           return;
         }
@@ -177,7 +177,7 @@ exports.getUsers = (params, connection) => {
       }
     }
   } else {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
   }
 };
@@ -217,7 +217,7 @@ var auth = (params, connection) => {
             });
           } else {
             connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           }
         }
         global.mongoConnect.collection("users").find({caselessUser:params.auth[0].toLowerCase()}).limit(1).next(queryCallback);
@@ -271,10 +271,10 @@ exports.createUser = (params, connection) => {
             global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true, miscKeys:miscKeys}, (err) => {
               if(!err) {
                 fileStorage.createDirs(user);
-                logger.log("Added new user '" + user + "'.", 6, false, config.moduleName);
+                logger.log("Added new user '" + user + "'.", 6, false, config.moduleName, __line, __file);
                 auth({auth:[user,passwd]}, connection);
               } else {
-                logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+                logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
                 connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
               }
             });
@@ -305,7 +305,7 @@ exports.modifyUser = (params, connection) => {
   global.mongoConnect.collection("users").findOne({caselessUser:user.toLowerCase()}, (err, doc) => {
     if(err || doc === undefined) {
       if(err) {
-        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       }
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
@@ -338,7 +338,7 @@ exports.modifyUser = (params, connection) => {
             apiResponses.concatObj(connection.send(apiResponses.JSON.success), {id: params.id}, true);
           }
         } else {
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         }
       });
@@ -356,7 +356,7 @@ exports.modifyUser = (params, connection) => {
 exports.removeUser = (params, connection) => {
   if(!params.JWT) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
   if(!verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return;
   }
@@ -375,7 +375,7 @@ exports.removeUser = (params, connection) => {
             logger.log("Removed user '" + userToDelete + "'.")
             connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
           } else {
-            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
             connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
           }
         });

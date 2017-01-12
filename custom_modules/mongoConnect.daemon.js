@@ -8,7 +8,7 @@ Mongo Connect Module [DAEMON]
 var config = require('./config/mongoConnect.daemon.config.json'),
 MongoClient = require('mongodb').MongoClient,
 logger = global.logger;
-logger.log("Mongo Connect Module [DAEMON] started and ready to go!", 4, false, config.moduleName);
+logger.log("Mongo Connect Module [DAEMON] started and ready to go!", 4, false, config.moduleName, __line, __file);
 
 // Username and password
 var auth = "",
@@ -24,9 +24,9 @@ var url = "mongodb://" + auth + config.dbAddress + ":" + config.dbPort + "/" + e
 
 MongoClient.connect(url, (err, db) => {
   if(!err) {
-    logger.log("Successfully connected to database at " + url + ".", 4, false, config.moduleName);
+    logger.log("Successfully connected to database at " + url + ".", 4, false, config.moduleName, __line, __file);
   } else {
-    logger.log("Could not connect to database at " + url + ". Is the database running? (" + err + ")", 1, true, config.moduleName);
+    logger.log("Could not connect to database at " + url + ". Is the database running? (" + err + ")", 1, true, config.moduleName, __line, __file);
     process.exit(1);
   }
   global.mongoConnect = db;
@@ -39,7 +39,7 @@ var checkDBConnection = (attempt) => {
   if(attempt > config.DBCheck.maxAttempts - 2) killScript = true;
   MongoClient.connect(url, (err, db) => {
     if(err || db === null) {
-      logger.log("DBCheck failed. Is the database running? (" + err + ")" + (!killScript ? " Trying again..." : " Killing process."), 1, true, config.moduleName);
+      logger.log("DBCheck failed. Is the database running? (" + err + ")" + (!killScript ? " Trying again..." : " Killing process."), 1, true, config.moduleName, __line, __file);
       if(!killScript) {
         setTimeout(() => {checkDBConnection(++attempt)}, 5000);
         return;

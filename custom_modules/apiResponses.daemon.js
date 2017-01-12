@@ -5,7 +5,7 @@ Default API responses
 var logger = global.logger,
 config = require('./config/apiResponses.daemon.config.json');
 
-logger.log("API Responses Module [DAEMON] started and ready to go!", 4, false, config.moduleName);
+logger.log("API Responses Module [DAEMON] started and ready to go!", 4, false, config.moduleName, __line, __file);
 
 // Common API responses
 module.exports = {

@@ -58,7 +58,7 @@ var searchTags = (params, connection) => {
     return false;
   }
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return false;
   }
@@ -67,7 +67,7 @@ var searchTags = (params, connection) => {
   // Search the db for this pattern
   global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}, (err, docs) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -82,7 +82,7 @@ var processTag = (name, user, attempt) => {
   if(attempt > 5) return; // If it still fails, we can't do anything
   global.mongoConnect.collection("tags").findOne({tag: name}, (err, doc) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       processTag(name, user, ++attempt);
       return;
     }
@@ -90,11 +90,11 @@ var processTag = (name, user, attempt) => {
       // This tag doesn't yet exist in the db, so insert it
       global.mongoConnect.collection("tags").insertOne({tag: name, user: user, createdAt: Math.floor(new Date() / 1000)}, (err) => {
         if(err) {
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           processTag(name, user, ++attempt);
           return;
         }
-        logger.log("Added new tag: '"+ name + "'.", 6, false, config.moduleName);
+        logger.log("Added new tag: '"+ name + "'.", 6, false, config.moduleName, __line, __file);
       });
     }
   });
@@ -119,7 +119,7 @@ var generateTaskBody = (params, connection) => {
     return false;
   }
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return false;
   }
@@ -155,7 +155,7 @@ var generateTaskBody = (params, connection) => {
       task: task
     }
   } catch(e) {
-    logger.log("Error trying to create task. (" + e + ")", 2, true, config.moduleName);
+    logger.log("Error trying to create task. (" + e + ")", 2, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
     return false;
   }
@@ -183,11 +183,11 @@ exports.addTask = (params, connection) => {
   // Insert this new task into the database
   global.mongoConnect.collection("tasks").insertOne(task, (err) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
-    logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName);
+    logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName, __line, __file);
     connection.send(JSON.stringify({
       type: "response",
       status: "success",
@@ -208,7 +208,7 @@ exports.listTasks = (params, connection) => {
     return;
   }
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return;
   }
@@ -220,7 +220,7 @@ exports.listTasks = (params, connection) => {
   if(!(getIDs || getUserTasks)) {
     global.mongoConnect.collection("tasks").find({}).toArray((err, docs) => {
       if(err) {
-        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
@@ -236,7 +236,7 @@ exports.listTasks = (params, connection) => {
     for(var idsi = 0; idsi < getIDs.length; idsi++) {
       global.mongoConnect.collection("tasks").find({id: getIDs[idsi]}).limit(1).toArray((err, docs) => {
         if(err || !docs.length) {
-          if(err) logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          if(err) logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
           iterationStop = true;
           return;
@@ -251,7 +251,7 @@ exports.listTasks = (params, connection) => {
     for(var usersi = 0; usersi < getUserTasks.length; usersi++) {
       global.mongoConnect.collection("tasks").find({caselessUser: getUserTasks[usersi].toLowerCase}).limit(1).toArray((err, docs) => {
         if(err || !docs.length) {
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
           iterationStop = true;
           return;
@@ -284,7 +284,7 @@ exports.modifyTask = (params, connection) => {
   }
 
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return;
   }
@@ -296,7 +296,7 @@ exports.modifyTask = (params, connection) => {
   // Fetch the task with this id
   global.mongoConnect.collection("tasks").find({"id":id}).limit(1).toArray((err, docs) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -361,11 +361,11 @@ exports.modifyTask = (params, connection) => {
     // Update this task in the db
     global.mongoConnect.collection("tasks").updateOne({id:id},{$set:newTask}).then((r) => {
       if(!r.result.ok) {
-        logger.log("Failed database query. (" + r + ")", 2, true, config.moduleName);
+        logger.log("Failed database query. (" + r + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
-      logger.log("Updated task. (ID:" + id + ")", 6, false, config.moduleName);
+      logger.log("Updated task. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
       successFunction();
       connection.send(JSON.stringify({
         type: "response",

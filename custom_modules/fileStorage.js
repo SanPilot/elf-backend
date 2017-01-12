@@ -25,14 +25,14 @@ var createDirs = (user) => {
     fs.access(config.directoryLocation, fs.constants.F_OK, (fErr) => {
       var dirEx = !fErr;
       if(dirEx && !dirWrite) {
-        logger.log("Elf does not have write access to filestorage directory. Please correct permissions.", 1, true, config.moduleName);
+        logger.log("Elf does not have write access to filestorage directory. Please correct permissions.", 1, true, config.moduleName, __line, __file);
         process.exit(1);
       }
       if(!dirEx) {
-        logger.log("The filestorage directory does not exist and will be created.", 3, false, config.moduleName);
+        logger.log("The filestorage directory does not exist and will be created.", 3, false, config.moduleName, __line, __file);
         fs.mkdir(config.directoryLocation, 0o700, (err) => {
           if(err) {
-            logger.log("Failed to create filestorage directory.", 1, true, config.moduleName);
+            logger.log("Failed to create filestorage directory.", 1, true, config.moduleName, __line, __file);
             process.exit(1);
           }
         });
@@ -48,9 +48,9 @@ var createDirs = (user) => {
     if(!err) return;
 
     // Create the directory
-    logger.log("Creating filestorage directory for user '" + user + "'.", 6, false, config.moduleName);
+    logger.log("Creating filestorage directory for user '" + user + "'.", 6, false, config.moduleName, __line, __file);
     fs.mkdir(userDir, 0o700, (crErr) => {
-      if(crErr) logger.log("Unable to create filestorage directory for user '" + user + "'. This user will be unable to upload until the issue is resolved. This error may be caused by incorrectly set permissions.", 2, true, config.moduleName);
+      if(crErr) logger.log("Unable to create filestorage directory for user '" + user + "'. This user will be unable to upload until the issue is resolved. This error may be caused by incorrectly set permissions.", 2, true, config.moduleName, __line, __file);
     });
   });
 }
@@ -101,7 +101,7 @@ exports.createUpload = (params, connection) => {
   var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
   fs.writeFile(filename, "", (err) => {
     if(err) {
-      logger.log("There was an error opening a file for writing in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      logger.log("There was an error opening a file for writing in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -127,7 +127,7 @@ exports.finalizeUpload = (params, connection) => {
   // Check if the file size matches the entry file size
   fs.stat(filename, (err, stats) => {
     if(err) {
-      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName);      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file);      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -145,7 +145,7 @@ exports.finalizeUpload = (params, connection) => {
     // Add this file to the DB
     global.mongoConnect.collection("files").insertOne(uploadsList[params.fileId], (err, r) => {
       if(err) {
-        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
@@ -202,14 +202,14 @@ exports.upload = (connection) => {
       fs.appendFile(filename, message.binaryData, (err) => {
         acceptReady = true;
         if(err) {
-          logger.log("There was an error writing to a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+          logger.log("There was an error writing to a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
           connection.send(apiResponses.strings.errors.failed);
           return;
         }
         // See if the new size of the file is too large
         fs.stat(filename, (err, stats) => {
           if(err) {
-            logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+            logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
             return;
           }
           // If it is, delete the upload
@@ -237,21 +237,21 @@ var checkAndDelete = (filename, file) => {
   fs.stat(filename, (err, stats) => {
     if(err) {
       // There's nothing we can do, just log and quit
-      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
       return;
     }
     if(Math.floor((new Date() - stats.mtime) / 1000) > config.maxUploadTime) {
       // This file was last modified over the specified maxUploadTime, if it is abandoned, delete it
       global.mongoConnect.collection("files").findOne({id: file}, (err, doc) => {
         if(err) {
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           return;
         }
         if(doc === null) {
           // This file is abandoned, delete it
           fs.unlink(filename, (err) => {
             if(err) {
-              logger.log("There was an error removing a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+              logger.log("There was an error removing a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
               return;
             }
             // Remove the file if it exists in the upload list
@@ -273,7 +273,7 @@ var deleteAbandoned = (attempt, user, directory) => {
   if(attempt > 5) return; // There seems to be an issue, just give up
   fs.readdir(directory, (err, files) => {
     if(err) {
-      logger.log("There was an error reading the files in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+      logger.log("There was an error reading the files in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
       deleteAbandoned(++attempt, user, directory);
       return;
     }
@@ -312,7 +312,7 @@ exports.fileInfo = (params, connection) => {
   // See if the file exists
   global.mongoConnect.collection("files").findOne({id: params.fileId}, (err, doc) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -353,7 +353,7 @@ exports.createDownload = (params, connection) => {
   // See if the file exists
   global.mongoConnect.collection("files").findOne({id: params.fileId}, (err, doc) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName);
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
@@ -374,7 +374,7 @@ exports.createDownload = (params, connection) => {
     // Read the file and send the data
     fs.readFile(filename, (err, data) => {
       if(err) {
-        logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName)
+        logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }

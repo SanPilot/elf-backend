@@ -21,23 +21,23 @@ apiResponses = global.apiResponses,
 apis = [];
 
 // Log information
-logger.log("Welcome to Elf. Index script started up successfully.", 3, false, config.moduleName);
+logger.log("Welcome to Elf. Index script started up successfully.", 3, false, config.moduleName, __line, __file);
 
 // Require API modules
 for (var key in config.requireModules) {
   if (config.requireModules.hasOwnProperty(key)) {
     apis[key] = require("./custom_modules/" + config.requireModules[key]);
-    logger.log("Required API module '" + key + "' with path \"" + config.requireModules[key] + "\".", 6, false, config.moduleName);
+    logger.log("Required API module '" + key + "' with path \"" + config.requireModules[key] + "\".", 6, false, config.moduleName, __line, __file);
   }
 }
 
 // Configure server
-logger.log("Starting API server...", 4, false, config.moduleName);
+logger.log("Starting API server...", 4, false, config.moduleName, __line, __file);
 
 // Start HTTP server
 var server = http.createServer(()=>{});
 server.listen(config.usePort, () => {
-  logger.log("API server started listening on port " + config.usePort + ".", 4, false, config.moduleName);
+  logger.log("API server started listening on port " + config.usePort + ".", 4, false, config.moduleName, __line, __file);
 });
 
 // Start WebSocket server
@@ -49,7 +49,7 @@ var wsServer = new webSocketServer({
 
 wsServer.on('request', (request) => {
   setTimeout(() => {
-    logger.log("Recieved API connection from origin " + request.origin + ".", 6, false, config.moduleName);
+    logger.log("Recieved API connection from origin " + request.origin + ".", 6, false, config.moduleName, __line, __file);
     var connection = request.accept(null, request.origin);
 
     var firstMessageSent = false;
@@ -77,7 +77,7 @@ wsServer.on('request', (request) => {
         setTimeout(() => {
           freqBlock = false;
         }, config.freqBlock.blockTime);
-        logger.log("Possibly malacious requests blocked for being too frequent from " + connection.remoteAddress + ".", 4, true, config.moduleName);
+        logger.log("Possibly malacious requests blocked for being too frequent from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
       }
       if(!freqBlock) {
         if(connection.isSpecialConnection) return; // This is a special connection, don't respond to the message
@@ -130,7 +130,7 @@ wsServer.on('request', (request) => {
     });
 
     connection.on('close', () => {
-      logger.log("Connection from " + request.origin + " closed.", 6, false, config.moduleName);
+      logger.log("Connection from " + request.origin + " closed.", 6, false, config.moduleName, __line, __file);
     });
   });
 }, 2000);
