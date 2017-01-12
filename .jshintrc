@@ -2,7 +2,7 @@
   "passfail"      : false,
   "maxerr"        : 100,
 
-  "browser"       : true,
+  "browser"       : false,
 
   "node"          : true,
   "rhino"         : false,
@@ -32,7 +32,7 @@
   "forin"         : false,
   "immed"         : true,
   "latedef"       : true,
-  "loopfunc"      : false,
+  "loopfunc"      : true,
   "noarg"         : true,
   "regexp"        : true,
   "regexdash"     : false,
