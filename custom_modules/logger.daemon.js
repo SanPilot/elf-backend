@@ -9,19 +9,6 @@ var config = require('./config/logger.daemon.config.json');
 // Require modules
 var chalk = require('chalk'), fs = require('fs');
 
-// where to log errors
-var errorLogFile = (config.file.separateErrorLog ? config.file.errorLogFile : config.file.logFile);
-
-// function to write to file
-var writeToFile = (message, useErrorFile) => {
-  var path = (useErrorFile ? errorLogFile : config.file.logFile);
-  fs.appendFile(path, message + "\n", (err) => {
-    if(err) {
-      console.error(chalk.red(config.moduleName + " [ERROR, LOGLEVEL " + 1 + "] at " + Date() + ": " + chalk.bold("Unable to log to file! Error message: " + err)));
-    }
-  });
-};
-
 // global properties to find line and function
 Object.defineProperty(global, '__stack', {
   get: function() {
@@ -67,18 +54,6 @@ var log = function(message, logLevel, error, name, line, file) {
     }
   }
 
-  // file logging
-  if(config.file.logging && logLevel <= config.file.logLevel) {
-
-    // Error message
-    if(error) {
-      writeToFile(name + " [ERROR, LOGLEVEL " + logLevel + "] at " + Date() + ": " + message, true);
-
-      // Normal message
-    } else {
-      writeToFile(name + " [LOG, LOGLEVEL " + logLevel + "] at " + Date() + ": " + message, false);
-    }
-  }
 };
 
 // export log function
