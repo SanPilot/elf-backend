@@ -36,6 +36,13 @@ logger.log("Starting API server...", 4, false, config.moduleName, __line, __file
 
 // Start HTTP server
 var server = http.createServer(()=>{});
+
+// Set up error handling
+server.on("error", (e) => {
+  logger.log("There was an error starting the server on port " + config.usePort + ": " + e + ".", 1, true, config.moduleName, __line, __file);
+  process.exit(1);
+});
+
 server.listen(config.usePort, () => {
   logger.log("API server started listening on port " + config.usePort + ".", 4, false, config.moduleName, __line, __file);
 });
