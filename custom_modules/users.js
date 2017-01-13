@@ -189,9 +189,12 @@ var auth = (params, connection) => {
     return;
   }
   if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
-  dbMatches("users", {caselessUser:params.auth[0].toLowerCase()}, (result) => {
+  dbMatches("users", {$or: [
+    {caselessUser: params.auth[0].toLowerCase()},
+    {email: params.auth[0].toLowerCase()}
+  ]}, (result) => {
     if(result.status) {
-      if(result.matches > 0) {
+      if(result.matches === 1) {
         var queryCallback = (err, docs) => {
           if(!err) {
             if(!docs.active) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
@@ -243,7 +246,7 @@ exports.createUser = (params, connection) => {
   var user = params.create.user,
   name = params.create.name,
   passwd = params.create.passwd,
-  email = params.create.email,
+  email = params.create.email.toLowerCase(),
   miscKeys = params.create.miscKeys || {};
 
   // Make sure parameters are good
@@ -256,7 +259,10 @@ exports.createUser = (params, connection) => {
     return;
   }
 
-  dbMatches("users", {caselessUser:params.create.user.toLowerCase()}, (result) => {
+  dbMatches("users", {$or: [
+    {caselessUser: user.toLowerCase()},
+    {email: email}
+  ]}, (result) => {
     if(result.status) {
       // Check if user already exists
       if(result.matches === 0) {
@@ -272,7 +278,7 @@ exports.createUser = (params, connection) => {
               if(!err) {
                 fileStorage.createDirs(user);
                 logger.log("Added new user '" + user + "'.", 6, false, config.moduleName, __line, __file);
-                auth({auth:[user,passwd]}, connection);
+                auth({auth:[user,passwd],id:params.id}, connection);
               } else {
                 logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
                 connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -311,7 +317,7 @@ exports.modifyUser = (params, connection) => {
       return;
     }
     var name = params.modify.name || doc.name,
-    email = params.modify.email || doc.email,
+    email = (params.modify.email ? params.modify.email.toLowerCase() : doc.email.toLowerCase()),
     miscKeys = params.modify.miscKeys || doc.miscKeys,
     modPass = params.modify.passwd !== undefined,
     passwd = (modPass ? params.modify.passwd : doc.passwd),
@@ -324,7 +330,7 @@ exports.modifyUser = (params, connection) => {
 
       // Make sure parameters are good
       if(!(/^[A-Za-z ]+$/ig.test(name) && /^.+[@＠].+/ig.test(email))) {
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {id: params.id}, true));
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidField, {"id": params.id}, true));
         return;
       }
 
@@ -335,19 +341,42 @@ exports.modifyUser = (params, connection) => {
           if(modPass) {
             auth({auth:[user,passwd]}, connection);
           } else {
-            apiResponses.concatObj(connection.send(apiResponses.JSON.success), {id: params.id}, true);
+            connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
           }
         } else {
           logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         }
       });
+    },
+    emailMatchCallback = () => {
+      // Execute this function depending on if the password is to be changed or not
+      if(modPass) {
+        passwdHash(params.modify.passwd, user, salt, hashCallback);
+      } else {
+        hashCallback({status:true, hashedPasswd:passwd});
+      }
     };
-    // Execute this function depending on if the password is to be changed or not
-    if(modPass) {
-      passwdHash(params.modify.passwd, user, salt, hashCallback);
+
+    // Check if the new email is unique
+    if(!params.modify.email || params.modify.email.toLowerCase() === doc.email.toLowerCase()) {
+      // The email is not changing, continue
+      emailMatchCallback();
     } else {
-      hashCallback({status:true, hashedPasswd:passwd});
+      // The emailis changing, check if it is unique
+      dbMatches('users', {email: email}, (result) => {
+        if(!result.status) {
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+          return;
+        }
+        if(result.matches !== 0) {
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.userAlreadyExists, {"id": params.id}, true));
+          return;
+        }
+
+        // Email is unique, continue
+        emailMatchCallback();
+      });
     }
   });
 };
