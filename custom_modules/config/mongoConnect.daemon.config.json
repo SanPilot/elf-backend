@@ -12,5 +12,23 @@
     "enabled": true,
     "maxAttempts": 10,
     "interval": 60000
-  }
+  },
+  "indexes": [
+    {
+      "collection": "users",
+      "index": {"caselessUser": 1}
+    },
+    {
+      "collection": "users",
+      "index": {"email": 1}
+    },
+    {
+      "collection": "tasks",
+      "index": {"id": 1}
+    },
+    {
+      "collection": "files",
+      "index": {"id": 1}
+    }
+  ]
 }

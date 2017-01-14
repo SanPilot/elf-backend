@@ -57,3 +57,31 @@ var checkDBConnection = (attempt) => {
 if(config.DBCheck.enabled) {
   setInterval(checkDBConnection, config.DBCheck.interval);
 }
+
+// Make sure all specified indexes are present
+var createIndexes = (attempt, err) => {
+  attempt = attempt || 1;
+  err = err || "";
+
+  // Try 3 times before failing
+  if(attempt > 3) {
+    logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+    return;
+  }
+
+  var indexes = config.indexes;
+  for(var i = 0; i < indexes.length; i++) {
+    indexes[i].options = indexes[i].options || {};
+    global.mongoConnect.collection(indexes[i].collection).ensureIndex(indexes[i].index, indexes[i].options, (err, indexName) => {
+      if(err) {
+        createIndexes(++attempt, err);
+      }
+    });
+  }
+
+  // Success
+  logger.log("There " + (indexes.length === 1 ? "is" : "are") + " " + indexes.length + " active database index" + (indexes.length === 1 ? "" : "es") + ".", 6, false, config.moduleName, __line, __file);
+}
+
+// Run this function after five seconds
+setTimeout(createIndexes, 5000);
