@@ -29,6 +29,10 @@
     {
       "collection": "files",
       "index": {"id": 1}
+    },
+    {
+      "collection": "tags",
+      "index": {"tag": 1}
     }
   ]
 }
