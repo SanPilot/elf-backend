@@ -223,7 +223,10 @@ var auth = (params, connection) => {
             logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           }
         }
-        global.mongoConnect.collection("users").find({caselessUser:params.auth[0].toLowerCase()}).limit(1).next(queryCallback);
+        global.mongoConnect.collection("users").find({$or: [
+          {caselessUser: params.auth[0].toLowerCase()},
+          {email: params.auth[0].toLowerCase()}
+        ]}).limit(1).next(queryCallback);
       } else {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
       }
