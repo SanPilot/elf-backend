@@ -48,30 +48,23 @@ var escRegex = (str) => {
 }
 
 // Function to search for tags in the db
-var searchTags = (params, connection) => {
-  if(!(params.letters && params.JWT)) {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
-    return false;
-  }
-  if(params.letters.constructor !== String) {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
-    return false;
-  }
-  if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-    return false;
-  }
-  var testExp = "^" + params.letters + ".*$";
+exports.searchTags = (query, callback) => {
 
-  // Search the db for this pattern
-  global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}, (err, docs) => {
-    if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
-      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-      return;
-    }
-    connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": docs}, true));
+  // Create a promise for the value
+  return new new Promise((resolve, reject) => {
+
+    // Create the regex for the db search
+    var testExp = "^" + query + ".*$";
+
+    // Search the db for this pattern
+    global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}, (err, docs) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+        reject(err);
+        return;
+      }
+      resolve(docs);
+    });
   });
 }
 
