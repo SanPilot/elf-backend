@@ -112,7 +112,7 @@ var generateTaskBody = (params, connection) => {
     return false;
   }
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
+    logger.log("Recieved possibly malicious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return false;
   }
@@ -160,6 +160,10 @@ exports.addTask = (params, connection) => {
   if(generated === false) {
     return;
   }
+
+  // Add an empty comments array
+  generated.task.comments = [];
+
   var parsedBody = generated.parsedBody,
   id = generated.id,
   task = generated.task;
@@ -201,7 +205,7 @@ exports.listTasks = (params, connection) => {
     return;
   }
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
+    logger.log("Recieved possibly malicious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return;
   }
@@ -211,7 +215,7 @@ exports.listTasks = (params, connection) => {
   getIDs = (getIDs.length ? getIDs : false);
   getUserTasks = (getUserTasks.length ? getUserTasks : false);
   if(!(getIDs || getUserTasks)) {
-    global.mongoConnect.collection("tasks").find({}).toArray((err, docs) => {
+    global.mongoConnect.collection("tasks").find({markedAsDone: false}).toArray((err, docs) => {
       if(err) {
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -277,7 +281,7 @@ exports.modifyTask = (params, connection) => {
   }
 
   if(!users.verifyJWT(params.JWT)) {
-    logger.log("Recieved possibly malacious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
+    logger.log("Recieved possibly malicious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return;
   }
@@ -294,7 +298,7 @@ exports.modifyTask = (params, connection) => {
       return;
     }
     if(!docs.length) {
-      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.taskDoesNotExist, {"id": params.id}, true));
       return;
     }
     var task = docs[0], newTask, successFunction;
@@ -352,9 +356,9 @@ exports.modifyTask = (params, connection) => {
     }
 
     // Update this task in the db
-    global.mongoConnect.collection("tasks").updateOne({id:id},{$set:newTask}).then((r) => {
-      if(!r.result.ok) {
-        logger.log("Failed database query. (" + r + ")", 2, true, config.moduleName, __line, __file);
+    global.mongoConnect.collection("tasks").updateOne({id:id},{$set:newTask}, (err) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
@@ -366,6 +370,129 @@ exports.modifyTask = (params, connection) => {
         id: params.id,
         content: newTask
       }));
+    });
+  });
+}
+
+// Functions for dealing with comments
+
+// Function to add a comment to a task
+exports.addComment = (params, connection) => {
+  if(!(params.taskId && params.comment && params.JWT)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(!(params.taskId.constructor === String && params.comment.constructor === String)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    logger.log("Recieved possibly malicious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  // Check if the task exists
+  users.dbMatches("tasks", {id: params.taskId}, (result) => {
+    if(!result.status) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    if(result.matches !== 1) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.taskDoesNotExist, {"id": params.id}, true));
+      return;
+    }
+
+    // Create the comment
+    var createdAt = Math.floor(new Date() / 1000),
+    comment = xss(params.comment, {
+      whiteList: xss.whiteList,
+      allowCommentTag: false,
+      stripIgnoreTag: true
+    }),
+    id = crypto.createHash('sha256').update(createdAt + ":" + comment).digest('hex'),
+    commentObj = {
+      id: id,
+      comment: comment,
+      user: users.getTokenInfo(params.JWT).payload.user,
+      createdAt: createdAt,
+      edited: false
+    };
+
+    // Add this comment to the task
+    global.mongoConnect.collection("tasks").updateOne({id: params.taskId}, {$push: {comments: {$each: [commentObj], $position: 0}}}, (err) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      logger.log("Added comment. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": commentObj}, true));
+    });
+  });
+}
+
+// Function to modify existing comment
+exports.modifyComment = (params, connection) => {
+  if(!(params.taskId && params.commentId && params.newComment && params.JWT)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(!(params.taskId.constructor === String && params.commentId.constructor === String && params.newComment.constructor === String)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(!users.verifyJWT(params.JWT)) {
+    logger.log("Recieved possibly malicious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  // Check if the specified task and comment exists
+  users.dbMatches("tasks", {id: params.taskId, comments: {
+    $elemMatch: {
+      id: params.commentId,
+      user: users.getTokenInfo(params.JWT).payload.user
+    }
+  }}, (result) => {
+    if(!result.status) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    if(result.matches !== 1) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.commentDoesNotExist, {"id": params.id}, true));
+      return;
+    }
+
+    // The comment exists, modify it
+
+    // Create the new comment
+    var createdAt = Math.floor(new Date() / 1000),
+    comment = xss(params.newComment, {
+      whiteList: xss.whiteList,
+      allowCommentTag: false,
+      stripIgnoreTag: true
+    }),
+    commentObj = {
+      comment: comment,
+      createdAt: createdAt,
+      edited: true
+    };
+
+    // Add the updated version of the comment to the db
+    global.mongoConnect.collection("tasks").updateOne({id: params.taskId, comments: {
+      $elemMatch: {
+        id: params.commentId,
+        user: users.getTokenInfo(params.JWT).payload.user
+      }
+    }}, {$set: {"comments.$.comment": commentObj.comment, "comments.$.createdAt": commentObj.createdAt, "comments.$.edited": commentObj.edited}}, (err) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      logger.log("Modified comment. (ID:" + params.commentId + ")", 6, false, config.moduleName, __line, __file);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
     });
   });
 }

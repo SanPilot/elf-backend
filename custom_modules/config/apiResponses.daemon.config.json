@@ -46,6 +46,16 @@
         "type": "response",
         "status": "failed",
         "error": "Invalid username"
+      },
+      "taskDoesNotExist": {
+        "type": "response",
+        "status": "failed",
+        "error": "Task does not exist"
+      },
+      "commentDoesNotExist": {
+        "type": "response",
+        "status": "failed",
+        "error": "Comment does not exist"
       }
     },
     "success": {

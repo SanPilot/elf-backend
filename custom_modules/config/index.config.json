@@ -22,6 +22,8 @@
     "addTask": ["tasks", "addTask"],
     "listTasks": ["tasks", "listTasks"],
     "modifyTask": ["tasks", "modifyTask"],
+    "addComment": ["tasks", "addComment"],
+    "modifyComment": ["tasks", "modifyComment"],
     "getNotifications": ["notify", "getNotifications"],
     "createUpload": ["fileStorage", "createUpload"],
     "finalizeUpload": ["fileStorage", "finalizeUpload"],
