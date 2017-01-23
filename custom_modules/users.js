@@ -184,56 +184,59 @@ exports.getUsers = (params, connection) => {
 
 // Authenticate Users
 var auth = (params, connection) => {
-  if(!(params.auth && params.auth[0] && params.auth[1])) {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
-    return;
-  }
-  if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
-  dbMatches("users", {$or: [
-    {caselessUser: params.auth[0].toLowerCase()},
-    {email: params.auth[0].toLowerCase()}
-  ]}, (result) => {
-    if(result.status) {
-      if(result.matches === 1) {
-        var queryCallback = (err, docs) => {
-          if(!err) {
-            if(!docs.active) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
-            passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
-              if(result.status) {
-                if(docs.passwd === result.hashedPasswd) {
-                  var expires = Math.floor(new Date() / 1000) + 3600;
-                  connection.send(JSON.stringify({
-                    "type": "response",
-                    "status": "success",
-                    "id": params.id,
-                    "content": {
-                      "token": generateJWT({"user": docs.user, "iat": Math.floor(new Date() / 1000), "expires": expires}),
-                      "expires": expires
-                    }
-                  }));
-                } else {
-                  connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-                }
-              } else {
-                connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-              }
-            });
-          } else {
-            connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
-          }
-        }
-        global.mongoConnect.collection("users").find({$or: [
-          {caselessUser: params.auth[0].toLowerCase()},
-          {email: params.auth[0].toLowerCase()}
-        ]}).limit(1).next(queryCallback);
-      } else {
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-      }
-    } else {
-      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+  // Anti-brute force timeout
+  setTimeout(() => {
+    if(!(params.auth && params.auth[0] && params.auth[1])) {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+      return;
     }
-  });
+    if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
+    dbMatches("users", {$or: [
+      {caselessUser: params.auth[0].toLowerCase()},
+      {email: params.auth[0].toLowerCase()}
+    ]}, (result) => {
+      if(result.status) {
+        if(result.matches === 1) {
+          var queryCallback = (err, docs) => {
+            if(!err) {
+              if(!docs.active) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
+              passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
+                if(result.status) {
+                  if(docs.passwd === result.hashedPasswd) {
+                    var expires = Math.floor(new Date() / 1000) + 3600;
+                    connection.send(JSON.stringify({
+                      "type": "response",
+                      "status": "success",
+                      "id": params.id,
+                      "content": {
+                        "token": generateJWT({"user": docs.user, "iat": Math.floor(new Date() / 1000), "expires": expires}),
+                        "expires": expires
+                      }
+                    }));
+                  } else {
+                    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+                  }
+                } else {
+                  connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+                }
+              });
+            } else {
+              connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+              logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+            }
+          }
+          global.mongoConnect.collection("users").find({$or: [
+            {caselessUser: params.auth[0].toLowerCase()},
+            {email: params.auth[0].toLowerCase()}
+          ]}).limit(1).next(queryCallback);
+        } else {
+          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+        }
+      } else {
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      }
+    });
+  }, 800);
 }
 exports.auth = auth;
 
