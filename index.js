@@ -63,7 +63,8 @@ wsServer.on('request', (request) => {
 
     // limit messages per second
     var messagesInLastSecond = 0,
-    freqBlock = false;
+    freqBlock = false,
+    freqBlockTimeout;
 
     // Reset every second
     setInterval(() => {
@@ -79,15 +80,17 @@ wsServer.on('request', (request) => {
         return;
       }
 
+      if(connection.isSpecialConnection) return; // This is a special connection, don't respond to the message
+
       if(++messagesInLastSecond > config.freqBlock.messagesAllowedPerSecond) {
         freqBlock = true;
-        setTimeout(() => {
+        clearTimeout(freqBlockTimeout);
+        freqBlockTimeout = setTimeout(() => {
           freqBlock = false;
         }, config.freqBlock.blockTime);
         logger.log("Possibly malacious requests blocked for being too frequent from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
       }
       if(!freqBlock) {
-        if(connection.isSpecialConnection) return; // This is a special connection, don't respond to the message
         if(!firstMessageSent && message.type === 'utf8' && config.specialConnections[message.utf8Data]) {
           var specReg = config.specialConnections[message.utf8Data];
           // This request is a special request. Hand it off to be used by the module:
