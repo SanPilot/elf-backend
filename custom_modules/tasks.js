@@ -303,7 +303,7 @@ exports.modifyTask = (params, connection) => {
     }
     var task = docs[0], newTask, successFunction;
 
-    if(task.caselessUser === user) {
+    if(task.user.toLowerCase() === user) {
       var generated = generateTaskBody(params, connection);
       if(generated === false) {
         return;
