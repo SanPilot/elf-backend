@@ -41,23 +41,30 @@ var log = function(message, logLevel, error, name, line, file) {
 
   // Replace template variables
   var replace = [
-    ["M", message],
-    ["", logLevel],
-
+    ["M", chalk.bold(message)],
+    ["E", logLevel],
+    ["N", name],
+    ["L", line],
+    ["F", file]
   ];
-
-  var loc = (line ? ", LINE " + line : "") + (file ? ", FILE '" + file + "'" : "");
+  
+  var logString = config[(error ? "error" : "log")];
+  
+  // iterate through keys
+  for(var i = 0; i < replace.length; i++) {
+  	logString.replace(new RegExp("\$" + replace[i][0], 'g'), replace[i][0]);
+  }
 
   // console logging
   if(config.console.logging && logLevel <= config.console.logLevel) {
 
     // Error message
     if(error) {
-      console.error(chalk.red(name + " [ERROR, LOGLEVEL " + logLevel + loc + "] at " + Date() + ": " + chalk.bold(message)));
+      console.error(chalk.red(logString));
 
       // Normal message
     } else {
-      console.log(name + " [LOG, LOGLEVEL " + logLevel + loc + "] at " + Date() + ": " + chalk.bold(message));
+      console.log(logString);
     }
   }
 
