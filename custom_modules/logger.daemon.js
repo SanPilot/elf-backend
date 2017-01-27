@@ -39,6 +39,13 @@ Object.defineProperty(global, '__file', {
 // logging function to be exported
 var log = function(message, logLevel, error, name, line, file) {
 
+  // Replace template variables
+  var replace = [
+    ["M", message],
+    ["", logLevel],
+
+  ];
+
   var loc = (line ? ", LINE " + line : "") + (file ? ", FILE '" + file + "'" : "");
 
   // console logging

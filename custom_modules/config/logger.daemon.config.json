@@ -3,5 +3,9 @@
   "console": {
     "logging": true,
     "logLevel": 6
+  },
+  "logPatterns": {
+    "log": "$N (line $L): $M",
+    "error": "$N (line $L) [ERROR]: $M"
   }
 }
