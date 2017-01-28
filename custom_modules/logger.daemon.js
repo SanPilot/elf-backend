@@ -39,20 +39,33 @@ Object.defineProperty(global, '__file', {
 // logging function to be exported
 var log = function(message, logLevel, error, name, line, file) {
 
+  // HH:MM:SS
+  var date = new Date();
+
+  var time = date.getHours();
+  time = (time < 10 ? "0" : "") + time;
+
+  var min  = date.getMinutes();
+  time += ":" + (min < 10 ? "0" : "") + min;
+
+  var sec  = date.getSeconds();
+  time += ":" + (sec < 10 ? "0" : "") + sec;
+
   // Replace template variables
   var replace = [
     ["M", chalk.bold(message)],
     ["E", logLevel],
     ["N", name],
     ["L", line],
-    ["F", file]
+    ["F", file],
+    ["T", time]
   ];
-  
+
   var logString = config.logPatterns[(error ? "error" : "log")];
-  
+
   // iterate through keys
   for(var i = 0; i < replace.length; i++) {
-  	logString.replace(new RegExp("\$" + replace[i][0], 'g'), replace[i][0]);
+    logString = logString.replace(new RegExp("\\$" + replace[i][0], 'g'), replace[i][1]);
   }
 
   // console logging

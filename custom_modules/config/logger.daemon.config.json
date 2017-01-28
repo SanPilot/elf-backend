@@ -5,7 +5,7 @@
     "logLevel": 6
   },
   "logPatterns": {
-    "log": "$N (line $L): $M",
-    "error": "$N (line $L) [ERROR]: $M"
+    "log": "[$T]: $N (line $L): $M",
+    "error": "[$T]: $N (line $L) [ERROR]: $M"
   }
 }
