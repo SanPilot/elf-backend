@@ -11,7 +11,7 @@
   "DBCheck": {
     "enabled": true,
     "maxAttempts": 10,
-    "interval": 60000
+    "interval": 10000
   },
   "indexes": [
     {

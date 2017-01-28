@@ -47,37 +47,39 @@ if(config.auth.credentials) {
 // Connect to DB
 var url = "mongodb://" + auth + config.dbAddress + ":" + config.dbPort + "/" + endString;
 
-MongoClient.connect(url, (err, db) => {
-  if(!err) {
-    logger.log("Successfully connected to database at " + url + ".", 4, false, config.moduleName, __line, __file);
-  } else {
-    logger.log("Could not connect to database at " + url + ". Is the database running? (" + err + ")", 1, true, config.moduleName, __line, __file);
-    process.exit(1);
-  }
-  global.mongoConnect = db;
+// Function create connection
+var dbConnect = (callback) => {
+  MongoClient.connect(url, (err, db) => {
+    if(callback) callback();
+    if(!err) {
+      logger.log("Successfully connected to database at " + url + ".", 4, false, config.moduleName, __line, __file);
+    } else {
+      logger.log("Could not connect to database at " + url + ". Is the database running? (" + err + ")", 1, true, config.moduleName, __line, __file);
+      process.exit(1);
+    }
+    global.mongoConnect = db;
 
-  // Create the DB indexes
-  createIndexes();
-});
+    // Create the DB indexes
+    createIndexes();
+  });
+};
+
+// Create the connection
+dbConnect();
 
 // Periodic check for connection to database
 var checkDBConnection = (attempt) => {
   attempt = attempt || 0;
   var killScript = false;
   if(attempt > config.DBCheck.maxAttempts - 2) killScript = true;
-  MongoClient.connect(url, (err, db) => {
-    if(err || db === null) {
+  global.mongoConnect.listCollections().toArray((err, cols) => {
+    if(err) {
       logger.log("DBCheck failed. Is the database running? (" + err + ")" + (!killScript ? " Trying again..." : " Killing process."), 1, true, config.moduleName, __line, __file);
       if(!killScript) {
-        setTimeout(() => {checkDBConnection(++attempt)}, 5000);
-        return;
+        setTimeout(() => {dbConnect(() => {checkDBConnection(++attempt)})}, 5000);
       } else {
         process.exit(1);
-        return;
       }
-    } else {
-      db.close();
-      return;
     }
   });
 }
