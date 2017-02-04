@@ -13,7 +13,7 @@ var sendNotification = (notification, user, callback, attempt) => {
   attempt = attempt || 1;
   if(attempt > 10) return;
   notification.timestamp = Math.floor(new Date() / 1000);
-  global.mongoConnect.collection("users").find({caselessUser: user.toLowerCase}).toArray((err, docs) => {
+  global.mongoConnect.collection("users").find({caselessUser: user.toLowerCase()}).toArray((err, docs) => {
     if(err) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       setTimeout(() => {
@@ -21,14 +21,14 @@ var sendNotification = (notification, user, callback, attempt) => {
       }, 10000);
       return;
     }
-    if(docs.length === 0) {
+    if(!docs.length) {
       return;
     }
     var currentNotifications = docs[0].notifications || [];
     currentNotifications.unshift(notification);
 
     // Now add this notification to the database
-    global.mongoConnect.collection("users").updateOne({caselessUser: user.toLowerCase}, {$set: {notifications: currentNotifications}}).then((r) => {
+    global.mongoConnect.collection("users").updateOne({caselessUser: user.toLowerCase()}, {$set: {notifications: currentNotifications}}).then((r) => {
       if(!r.result.ok) {
         logger.log("Failed database query. (" + r.result + ")", 2, true, config.moduleName, __line, __file);
         setTimeout(() => {
@@ -55,7 +55,7 @@ exports.getNotifications = (params, connection) => {
   var perPage = 20;
 
   // Get the user's notifications
-  global.mongoConnect.collection("users").find({caselessUser: user.toLowerCase}).limit(1).toArray((err, docs) => {
+  global.mongoConnect.collection("users").find({caselessUser: user.toLowerCase()}).limit(1).toArray((err, docs) => {
     if(err || !docs.length) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
