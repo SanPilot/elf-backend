@@ -25,7 +25,7 @@ var parseTaskBody = (body) => {
 
   var mentionsRaw = [], match;
   while(match = mentionRegex.exec(parsedBody)) {
-    mentionsRaw.push(match[1])
+    mentionsRaw.push(match[1].toLowerCase());
   }
 
   // get list of @mentions
@@ -133,7 +133,7 @@ var generateTaskBody = (params, connection) => {
       summary: params.task.summary,
       createdAt: createdAt,
       user: users.getTokenInfo(params.JWT).payload.user,
-      caselessUser: users.getTokenInfo(params.JWT).payload.user.toLowerCase,
+      caselessUser: users.getTokenInfo(params.JWT).payload.user.toLowerCase(),
       project: params.task.project,
       priority: params.task.priority,
       markedAsDone: false,
@@ -247,7 +247,7 @@ exports.listTasks = (params, connection) => {
       if(iterationStop) return;
     }
     for(var usersi = 0; usersi < getUserTasks.length; usersi++) {
-      global.mongoConnect.collection("tasks").find({caselessUser: getUserTasks[usersi].toLowerCase}).limit(1).toArray((err, docs) => {
+      global.mongoConnect.collection("tasks").find({caselessUser: getUserTasks[usersi].toLowerCase()}).limit(1).toArray((err, docs) => {
         if(err || !docs.length) {
           logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -406,19 +406,16 @@ exports.addComment = (params, connection) => {
 
     // Create the comment
     var createdAt = Math.floor(new Date() / 1000),
-    comment = xss(params.comment, {
-      whiteList: xss.whiteList,
-      allowCommentTag: false,
-      stripIgnoreTag: true
-    }),
-    id = crypto.createHash('sha256').update(createdAt + ":" + comment).digest('hex'),
+    parsedComment = parseTaskBody(params.comment),
+    id = crypto.createHash('sha256').update(createdAt + ":" + parsedComment.body).digest('hex'),
     commentObj = {
       id: id,
-      comment: comment,
+      comment: parsedComment.body,
       user: users.getTokenInfo(params.JWT).payload.user,
       createdAt: createdAt,
       edited: false,
-      attachedFiles: params.attachedFiles
+      attachedFiles: params.attachedFiles,
+      mentions: parsedComment.mentions
     };
 
     // Add this comment to the task
@@ -427,6 +424,16 @@ exports.addComment = (params, connection) => {
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
+      }
+
+      // Send @mention notification
+      for(var i = 0; i < parsedComment.mentions.length; i++) {
+        notify.sendNotification({
+          type: "commentmention",
+          from: users.getTokenInfo(params.JWT).payload.user,
+          taskId: params.taskId,
+          commentId: params.commentId
+        }, parsedComment.mentions[i]);
       }
       logger.log("Added comment. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": commentObj}, true));
@@ -470,16 +477,13 @@ exports.modifyComment = (params, connection) => {
 
     // Create the new comment
     var createdAt = Math.floor(new Date() / 1000),
-    comment = xss(params.newComment, {
-      whiteList: xss.whiteList,
-      allowCommentTag: false,
-      stripIgnoreTag: true
-    }),
+    parsedComment = parseTaskBody(params.newComment),
     commentObj = {
-      comment: comment,
+      comment: parsedComment.body,
       createdAt: createdAt,
       edited: true,
-      attachedFiles: params.attachedFiles
+      attachedFiles: params.attachedFiles,
+      mentions: parsedComment.mentions
     };
 
     // Add the updated version of the comment to the db
@@ -493,6 +497,16 @@ exports.modifyComment = (params, connection) => {
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
+      }
+
+      // Send @mention notification
+      for(var i = 0; i < parsedComment.mentions.length; i++) {
+        notify.sendNotification({
+          type: "commentmention",
+          from: users.getTokenInfo(params.JWT).payload.user,
+          taskId: params.taskId,
+          commentId: params.commentId
+        }, parsedComment.mentions[i]);
       }
       logger.log("Modified comment. (ID:" + params.commentId + ")", 6, false, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
