@@ -63,7 +63,7 @@ exports.getTokenInfo = getTokenInfo;
 var dbMatches = (collection, query, callback) => {
   global.mongoConnect.collection(collection).find(query).toArray((err, docs) => {
     if(!err) {
-      callback({"status":true,"matches": docs.length});
+      callback({"status":true, "matches": docs.length});
     } else {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       callback({"status":false});
