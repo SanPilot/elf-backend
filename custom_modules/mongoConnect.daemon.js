@@ -81,7 +81,7 @@ var checkDBConnection = (attempt) => {
         process.exit(1);
       }
     } else {
-      logger.log("DBCheck successful.", 6, false, config.moduleName);
+      logger.log("DBCheck successful.", 6, false, config.moduleName, __line, __file);
       return;
     }
   });
