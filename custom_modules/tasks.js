@@ -197,7 +197,7 @@ exports.addTask = (params, connection) => {
 
 // Function to list tasks
 exports.listTasks = (params, connection) => {
-  if(!(params.request)) {
+  if(!(params.request && params.JWT)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return;
   }
@@ -379,11 +379,11 @@ exports.modifyTask = (params, connection) => {
 
 // Function to add a comment to a task
 exports.addComment = (params, connection) => {
-  if(!(params.taskId && params.comment && params.JWT)) {
+  if(!(params.taskId && params.comment && params.JWT && params.attachedFiles)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return;
   }
-  if(!(params.taskId.constructor === String && params.comment.constructor === String)) {
+  if(!(params.taskId.constructor === String && params.comment.constructor === String && params.attachedFiles.constructor === Array && checkArray(params.attachedFiles, String))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
     return;
   }
@@ -417,7 +417,8 @@ exports.addComment = (params, connection) => {
       comment: comment,
       user: users.getTokenInfo(params.JWT).payload.user,
       createdAt: createdAt,
-      edited: false
+      edited: false,
+      attachedFiles: params.attachedFiles
     };
 
     // Add this comment to the task
@@ -435,11 +436,11 @@ exports.addComment = (params, connection) => {
 
 // Function to modify existing comment
 exports.modifyComment = (params, connection) => {
-  if(!(params.taskId && params.commentId && params.newComment && params.JWT)) {
+  if(!(params.taskId && params.commentId && params.newComment && params.JWT && params.attachedFiles)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return;
   }
-  if(!(params.taskId.constructor === String && params.commentId.constructor === String && params.newComment.constructor === String)) {
+  if(!(params.taskId.constructor === String && params.commentId.constructor === String && params.newComment.constructor === String && params.attachedFiles.constructor === Array && checkArray(params.attachedFiles, String))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
     return;
   }
@@ -477,7 +478,8 @@ exports.modifyComment = (params, connection) => {
     commentObj = {
       comment: comment,
       createdAt: createdAt,
-      edited: true
+      edited: true,
+      attachedFiles: params.attachedFiles
     };
 
     // Add the updated version of the comment to the db
