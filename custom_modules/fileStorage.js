@@ -372,23 +372,20 @@ exports.createDownload = (params, connection) => {
     var filename = config.directoryLocation + "/" + doc.user + "/" + doc.id;
 
     // Read the file and send the data
-    fs.readFile(filename, (err, data) => {
+    fs.stat(filename, (err, stats) => {
       if(err) {
         logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
-      
-      var pieces = [];
 
       // If the file is too large, it will need to be sliced
-      if(data.byteLength > maxMessageSize) {
-        var numPieces = Math.ceil(data.byteLength / maxMessageSize);
-        for(var i = 0; i < numPieces; i++) {
-          pieces[i] = data.slice(maxMessageSize * i, (maxMessageSize * i) + maxMessageSize);
-        }
-      } else {
-        pieces = [data];
+      var remainingSize = stats.size,
+      pieces = [];
+      while(remainingSize !== 0) {
+        remainingSize -= maxMessageSize;
+        pieces.push(maxMessageSize + (remainingSize < 0 ? remainingSize : 0));
+        if(remainingSize < 0) remainingSize = 0;
       }
 
       // Create the download identifier
@@ -400,7 +397,8 @@ exports.createDownload = (params, connection) => {
         user: user,
         time: time,
         pieces: pieces,
-        numPieces: pieces.length
+        numPieces: pieces.length,
+        file: filename
       }
 
       // Everything is good; send a success message
@@ -436,7 +434,28 @@ exports.download = (connection) => {
 
     // Send the requested piece
     if(message.type === 'utf8' && (+message.utf8Data).constructor === Number && downloadObj.pieces[(+message.utf8Data)]) {
-      connection.send(downloadObj.pieces[(+message.utf8Data)]);
+      var requestedPiece = +message.utf8Data,
+      startRead = maxMessageSize * requestedPiece,
+      readLength = downloadObj.pieces[requestedPiece];
+      fs.open(downloadObj.file, 'r', (err, fd) => {
+        if(err) {
+          logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
+          connection.send(apiResponses.strings.errors.failed);
+          return;
+        }
+
+        // Read the requested bytes and send it
+        var readBuffer = new Buffer(readLength);
+        fs.read(fd, readBuffer, 0, readLength, startRead, (err, bytesRead, buffer) => {
+          if(err || bytesRead !== readLength) {
+            logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
+            connection.send(apiResponses.strings.errors.failed);
+            return;
+          }
+          connection.send(buffer);
+        });
+      });
+
       return;
     }
 
