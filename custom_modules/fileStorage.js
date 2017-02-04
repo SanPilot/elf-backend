@@ -48,9 +48,12 @@ var createDirs = (user) => {
     if(!err) return;
 
     // Create the directory
-    logger.log("Creating filestorage directory for user '" + user + "'.", 6, false, config.moduleName, __line, __file);
     fs.mkdir(userDir, 0o700, (crErr) => {
-      if(crErr) logger.log("Unable to create filestorage directory for user '" + user + "'. This user will be unable to upload until the issue is resolved. This error may be caused by incorrectly set permissions.", 2, true, config.moduleName, __line, __file);
+      if(crErr) {
+        logger.log("Unable to create filestorage directory for user '" + user + "'. This user will be unable to upload until the issue is resolved. This error may be caused by incorrectly set permissions.", 2, true, config.moduleName, __line, __file);
+        return;
+      }
+      logger.log("Created filestorage directory for user '" + user + "'.", 6, false, config.moduleName, __line, __file);
     });
   });
 }
