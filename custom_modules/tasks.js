@@ -103,12 +103,12 @@ var checkArray = (array, type) => {
 
 // This function is the common code between addTask and modifyTask - it checks all the variables then creates the task's body
 var generateTaskBody = (params, connection) => {
-  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags)) {
+  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags && params.task.summary)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return false;
   }
-  if(!(params.task.constructor === {}.constructor && params.task.project.constructor === String && params.task.priority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === Array && checkArray(params.task.attachedFiles, String) && params.task.tags.constructor === Array && checkArray(params.task.tags, String))) {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
+  if(!(params.task.constructor === {}.constructor && params.task.project.constructor === String && params.task.priority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === Array && checkArray(params.task.attachedFiles, String) && params.task.tags.constructor === Array && checkArray(params.task.tags, String) && params.task.summary.constructor === String)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
     return false;
   }
   if(!users.verifyJWT(params.JWT)) {
@@ -130,6 +130,7 @@ var generateTaskBody = (params, connection) => {
     var id = crypto.createHash('sha256').update(createdAt + ":" + parsedBody.body).digest('hex');
     var task = {
       id: id,
+      summary: params.task.summary,
       createdAt: createdAt,
       user: users.getTokenInfo(params.JWT).payload.user,
       caselessUser: users.getTokenInfo(params.JWT).payload.user.toLowerCase,
