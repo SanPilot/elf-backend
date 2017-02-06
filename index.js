@@ -20,9 +20,6 @@ logger = global.logger,
 apiResponses = global.apiResponses,
 apis = [];
 
-// Log information
-logger.log("Elf started successfully.", 3, false, config.moduleName, __line, __file);
-
 // Require API modules
 for (var key in config.requireModules) {
   if (config.requireModules.hasOwnProperty(key)) {
@@ -144,3 +141,6 @@ wsServer.on('request', (request) => {
     });
   });
 }, 2000);
+
+// Log successful start
+logger.log("Elf started successfully.", 3, false, config.moduleName, __line, __file);
