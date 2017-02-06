@@ -7,7 +7,7 @@ Logger Module [DAEMON]
 var config = require('./config/logger.daemon.config.json');
 
 // Require modules
-var chalk = require('chalk'), fs = require('fs');
+var chalk = require('chalk');
 
 // global properties to find line and function
 Object.defineProperty(global, '__stack', {
@@ -87,4 +87,4 @@ var log = function(message, logLevel, error, name, line, file) {
 exports.log = log;
 
 // Log stuff
-log("Logger Module [DAEMON] started and ready to go!", 4, false, config.moduleName, __line, __file);
+log("Logger Module [DAEMON] started.", 4, false, config.moduleName, __line, __file);

@@ -21,7 +21,7 @@ apiResponses = global.apiResponses,
 apis = [];
 
 // Log information
-logger.log("Welcome to Elf. Index script started up successfully.", 3, false, config.moduleName, __line, __file);
+logger.log("Elf started successfully.", 3, false, config.moduleName, __line, __file);
 
 // Require API modules
 for (var key in config.requireModules) {
