@@ -11,7 +11,8 @@
     "users": "users.js",
     "tasks": "tasks.js",
     "notify": "notify.daemon.js",
-    "fileStorage": "fileStorage.js"
+    "fileStorage": "fileStorage.js",
+    "projects": "projects.js"
   },
   "apiRoutes": {
     "getUsers": ["users", "getUsers"],
@@ -28,7 +29,11 @@
     "createUpload": ["fileStorage", "createUpload"],
     "finalizeUpload": ["fileStorage", "finalizeUpload"],
     "fileInfo": ["fileStorage", "fileInfo"],
-    "createDownload": ["fileStorage", "createDownload"]
+    "createDownload": ["fileStorage", "createDownload"],
+    "createProject": ["projects", "createProject"],
+    "modifyProject": ["projects", "modifyProject"],
+    "listProjects": ["projects", "listProjects"],
+    "listProjectItems": ["projects", "listProjectItems"]
   },
   "specialConnections": {
     "fileupload": ["fileStorage", "upload"],

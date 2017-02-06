@@ -107,19 +107,6 @@ var generateJWT = (payload) => {
   return headerB64 + '.' + payloadB64 + '.' + signatureB64;
 };
 
-// Function to only get parts of an object
-var getObjectParts = (obj, parts, callback) => {
-  var returnObj = {};
-  for(var i2 = 0; i2 < parts.length; i2++) {
-    if(obj.hasOwnProperty(parts[i2])) {
-      returnObj[parts[i2]] = obj[parts[i2]];
-    }
-    if(i2 + 1 === parts.length) {
-      callback(returnObj);
-    }
-  }
-}
-
 // Return requested users
 exports.getUsers = (params, connection) => {
   if(!(params.users && params.JWT)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
@@ -133,9 +120,7 @@ exports.getUsers = (params, connection) => {
     queryFailed,
     queryCallback = (err, docs, last) => {
       if(!err) {
-        getObjectParts(docs, ["user", "caselessUser", "name", "email", "active", "miscKeys"], (resultObj) => {
-          resArray.push(resultObj);
-        });
+        resArray.push(docs);
       } else {
         queryFailed = true;
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
@@ -156,7 +141,7 @@ exports.getUsers = (params, connection) => {
 
     // Get info for each user in the array
     if(!getUsers.length) {
-      global.mongoConnect.collection("users").find({active:true}).toArray((err, docs) => {
+      global.mongoConnect.collection("users").find({active:true}, ['user', 'caselessUser', 'name', 'email', 'active', 'miscKeys', 'projects']).toArray((err, docs) => {
         if(err) {
           logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -169,7 +154,7 @@ exports.getUsers = (params, connection) => {
     } else {
       for(var iu = 0; iu < getUsers.length; iu++) {
         var iterationStop = false;
-        global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}).limit(1).next((err, docs) => {
+        global.mongoConnect.collection("users").find({caselessUser:getUsers[iu].toLowerCase()}, ['user', 'caselessUser', 'name', 'email', 'active', 'miscKeys', 'projects']).limit(1).next((err, docs) => {
           if(!docs) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true)); iterationStop = true; return;}
           queryCallback(err, docs, docs.caselessUser === getUsers[getUsers.length - 1].toLowerCase());
         });
@@ -280,7 +265,7 @@ exports.createUser = (params, connection) => {
         passwdHash(passwd, user, salt, (result) => {
           if(result.status) {
             // Insert new user into db
-            global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true, miscKeys:miscKeys}, (err) => {
+            global.mongoConnect.collection("users").insertOne({user:user, caselessUser: user.toLowerCase(), name:name, passwd:result.hashedPasswd, salt:salt, email:email, active:true, miscKeys:miscKeys, projects:[]}, (err) => {
               if(!err) {
                 fileStorage.createDirs(user);
                 logger.log("Added new user '" + user + "'.", 6, false, config.moduleName, __line, __file);
@@ -306,8 +291,8 @@ exports.createUser = (params, connection) => {
 // Modify an existing user
 exports.modifyUser = (params, connection) => {
   if(!(params.JWT && params.modify)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
-  if(!(params.modify.constructor === Object && (params.modify.name === undefined || params.modify.name.constructor === String) && (params.modify.passwd === undefined || params.modify.passwd.constructor === String) && (params.modify.email === undefined || params.modify.email.constructor === String) && (params.modify.miscKeys === undefined || params.modify.miscKeys.constructor === Object))) {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+  if(!(params.modify.constructor === Object && (params.modify.name === undefined || params.modify.name.constructor === String) && (params.modify.passwd === undefined || params.modify.passwd.constructor === String) && (params.modify.email === undefined || params.modify.email.constructor === String) && (params.modify.miscKeys === undefined || params.modify.miscKeys.constructor === Object) && (params.modify.projects === undefined || params.modify.projects.constructor === Array))) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
     return;
   }
   if(!verifyJWT(params.JWT)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
@@ -327,7 +312,8 @@ exports.modifyUser = (params, connection) => {
     miscKeys = params.modify.miscKeys || doc.miscKeys,
     modPass = params.modify.passwd !== undefined,
     passwd = (modPass ? params.modify.passwd : doc.passwd),
-    salt = (passwd === undefined ? doc.salt : generateSalt()),
+    salt = (modPass ? generateSalt() : doc.salt),
+    projects = params.modify.projects || doc.projects,
     hashCallback = (result) => {
       if(!result.status) {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -341,7 +327,7 @@ exports.modifyUser = (params, connection) => {
       }
 
       // Update the user
-      global.mongoConnect.collection("users").updateOne({user:user}, {$set: {name: name, email: email, miscKeys: miscKeys, passwd: result.hashedPasswd, salt: salt}}, (err) => {
+      global.mongoConnect.collection("users").updateOne({user:user}, {$set: {name: name, email: email, miscKeys: miscKeys, passwd: result.hashedPasswd, salt: salt, projects: projects}}, (err) => {
         if(!err) {
           logger.log("Modified user '" + user + "'.", 6, false, config.moduleName, __line, __file);
           if(modPass) {
@@ -369,7 +355,7 @@ exports.modifyUser = (params, connection) => {
       // The email is not changing, continue
       emailMatchCallback();
     } else {
-      // The emailis changing, check if it is unique
+      // The email is changing, check if it is unique
       dbMatches('users', {email: email}, (result) => {
         if(!result.status) {
           connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));

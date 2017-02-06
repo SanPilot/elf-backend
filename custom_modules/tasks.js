@@ -57,7 +57,7 @@ exports.searchTags = (query, callback) => {
     var testExp = "^" + query + ".*$";
 
     // Search the db for this pattern
-    global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}, (err, docs) => {
+    global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}).toArray((err, docs) => {
       if(err) {
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         reject(err);
@@ -100,6 +100,7 @@ var checkArray = (array, type) => {
   }
   return true;
 }
+exports.checkArray = checkArray;
 
 // This function is the common code between addTask and modifyTask - it checks all the variables then creates the task's body
 var generateTaskBody = (params, connection) => {

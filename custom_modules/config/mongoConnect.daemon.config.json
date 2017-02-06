@@ -23,8 +23,20 @@
       "index": {"email": 1}
     },
     {
+      "collection": "users",
+      "index": {"miscKeys.projects": 1}
+    },
+    {
+      "collection": "users",
+      "index": {"project": 1}
+    },
+    {
       "collection": "tasks",
       "index": {"id": 1}
+    },
+    {
+      "collection": "tasks",
+      "index": {"project": 1}
     },
     {
       "collection": "files",
@@ -33,6 +45,10 @@
     {
       "collection": "tags",
       "index": {"tag": 1}
+    },
+    {
+      "collection": "projects",
+      "index": {"id": 1}
     }
   ]
 }
