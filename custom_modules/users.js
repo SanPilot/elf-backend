@@ -107,6 +107,44 @@ var generateJWT = (payload) => {
   return headerB64 + '.' + payloadB64 + '.' + signatureB64;
 };
 
+// Escape strings to be inserted into regex
+var escRegex = (str) => {
+  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+}
+
+// Make this function available to other modules
+exports.escRegex = escRegex;
+
+// Function to search for users in the db
+exports.searchUsers = (params, connection) => {
+  if(!(params.query && params.JWT)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(!(params.query.constructor === String && params.query.length)) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
+    return;
+  }
+  if(!verifyJWT(params.JWT)) {
+    logger.log("Recieved possibly malicious request with invalid authentication token from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
+    return;
+  }
+
+  // Create the regex for the db search
+  var testExp = "^" + params.query.toLowerCase() + ".*$";
+
+  // Search the db for this pattern
+  global.mongoConnect.collection("users").find({caselessUser:{$regex:testExp}}).toArray((err, docs) => {
+    if(err) {
+      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      return;
+    }
+    connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": docs}, true));
+  });
+}
+
 // Return requested users
 exports.getUsers = (params, connection) => {
   if(!(params.users && params.JWT)) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true)); return;}
