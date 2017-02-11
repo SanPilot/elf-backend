@@ -17,7 +17,7 @@ var createProjectObj = (params, connection) => {
     return false;
   }
 
-  if(!((!params.projectName || params.projectName.constructor === String) && (!params.projectDesc || params.projectDesc.constructor === String))) {
+  if(!((params.miscKeys === undefined || params.miscKeys.constructor === Object) && (!params.projectName || params.projectName.constructor === String) && (!params.projectDesc || params.projectDesc.constructor === String))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
     return false;
   }
@@ -41,7 +41,8 @@ var createProjectObj = (params, connection) => {
     createdAt: createdAt,
     createdBy: createUser,
     projectName: params.projectName || "",
-    projectDesc: params.projectDesc || ""
+    projectDesc: params.projectDesc || "",
+    miscKeys: params.miscKeys || {}
   };
 }
 
@@ -98,7 +99,8 @@ exports.modifyProject = (params, connection) => {
     // Pick the values that we need
     projectObj = {
       projectName: projectObj.projectName,
-      projectDesc: projectObj.projectDesc
+      projectDesc: projectObj.projectDesc,
+      miscKeys: params.miscKeys || doc.miscKeys
     }
 
     // Update the project
