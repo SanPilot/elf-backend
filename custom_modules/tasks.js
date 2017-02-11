@@ -9,7 +9,8 @@ config = require("./config/tasks.config.json"),
 users = require("./users.js"),
 notify = require("./notify.daemon.js"),
 xss = require('xss'),
-crypto = require('crypto');
+crypto = require('crypto'),
+shortCodes = require("./shortCodes.js");
 
 // Function to parse body for XSS + @mentions
 var parseTaskBody = (body) => {
@@ -179,20 +180,29 @@ exports.addTask = (params, connection) => {
     }, parsedBody.mentions[i]);
   }
 
-  // Insert this new task into the database
-  global.mongoConnect.collection("tasks").insertOne(task, (err) => {
+  // Generate a shortcode for the task
+  shortCodes.createShortCode('task', id, (err, code) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
-    logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName, __line, __file);
-    connection.send(JSON.stringify({
-      type: "response",
-      status: "success",
-      id: params.id,
-      content: task
-    }));
+    task.shortCode = code;
+
+    // Insert this new task into the database
+    global.mongoConnect.collection("tasks").insertOne(task, (err) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName, __line, __file);
+      connection.send(JSON.stringify({
+        type: "response",
+        status: "success",
+        id: params.id,
+        content: task
+      }));
+    });
   });
 }
 

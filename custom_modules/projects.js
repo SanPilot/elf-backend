@@ -7,6 +7,7 @@ var apiResponses = global.apiResponses,
 logger = global.logger,
 config = require("./config/projects.config.json"),
 users = require("./users.js"),
+shortCodes = require("./shortCodes.js"),
 crypto = require("crypto"),
 checkArray = require("./tasks.js").checkArray;
 
@@ -56,21 +57,29 @@ exports.createProject = (params, connection) => {
   // Create the project object
   var projectObj = createProjectObj(params, connection);
   if(!projectObj) return;
-
-  // Add the new project to the db
-  global.mongoConnect.collection("projects").insertOne(projectObj, (err) => {
+  // Generate a shortcode for the project
+  shortCodes.createShortCode('project', projectObj.id, (err, code) => {
     if(err) {
-      logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
-    logger.log("Created new project. (ID:" + projectObj.id + ")", 6, false, config.moduleName, __line, __file);
-    connection.send(JSON.stringify({
-      type: "response",
-      status: "success",
-      id: params.id,
-      content: projectObj
-    }));
+    projectObj.shortCode = code;
+
+    // Add the new project to the db
+    global.mongoConnect.collection("projects").insertOne(projectObj, (err) => {
+      if(err) {
+        logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+      logger.log("Created new project. (ID:" + projectObj.id + ")", 6, false, config.moduleName, __line, __file);
+      connection.send(JSON.stringify({
+        type: "response",
+        status: "success",
+        id: params.id,
+        content: projectObj
+      }));
+    });
   });
 }
 

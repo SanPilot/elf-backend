@@ -12,7 +12,8 @@
     "tasks": "tasks.js",
     "notify": "notify.daemon.js",
     "fileStorage": "fileStorage.js",
-    "projects": "projects.js"
+    "projects": "projects.js",
+    "shortCodes": "shortCodes.js"
   },
   "apiRoutes": {
     "getUsers": ["users", "getUsers"],
@@ -33,7 +34,8 @@
     "createProject": ["projects", "createProject"],
     "modifyProject": ["projects", "modifyProject"],
     "listProjects": ["projects", "listProjects"],
-    "listProjectItems": ["projects", "listProjectItems"]
+    "listProjectItems": ["projects", "listProjectItems"],
+    "resolveShortCode": ["shortCodes", "resolveShortCode"]
   },
   "specialConnections": {
     "fileupload": ["fileStorage", "upload"],

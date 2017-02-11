@@ -17,23 +17,35 @@
   "indexes": [
     {
       "collection": "users",
-      "index": {"caselessUser": 1}
+      "index": {"user": 1},
+      "options": {
+        "unique": true
+      }
     },
     {
       "collection": "users",
-      "index": {"email": 1}
+      "index": {"caselessUser": 1},
+      "options": {
+        "unique": true
+      }
     },
     {
       "collection": "users",
-      "index": {"miscKeys.projects": 1}
+      "index": {"email": 1},
+      "options": {
+        "unique": true
+      }
     },
     {
       "collection": "users",
-      "index": {"project": 1}
+      "index": {"projects": 1}
     },
     {
       "collection": "tasks",
-      "index": {"id": 1}
+      "index": {"id": 1},
+      "options": {
+        "unique": true
+      }
     },
     {
       "collection": "tasks",
@@ -41,15 +53,31 @@
     },
     {
       "collection": "files",
-      "index": {"id": 1}
+      "index": {"id": 1},
+      "options": {
+        "unique": true
+      }
     },
     {
       "collection": "tags",
-      "index": {"tag": 1}
+      "index": {"tag": 1},
+      "options": {
+        "unique": true
+      }
     },
     {
       "collection": "projects",
-      "index": {"id": 1}
+      "index": {"id": 1},
+      "options": {
+        "unique": true
+      }
+    },
+    {
+      "collection": "codes",
+      "index": {"code": 1},
+      "options": {
+        "unique": true
+      }
     }
   ]
 }

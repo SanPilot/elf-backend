@@ -35,6 +35,7 @@ var createDirs = (user) => {
             logger.log("Failed to create filestorage directory.", 1, true, config.moduleName, __line, __file);
             process.exit(1);
           }
+          logger.log("Created filestorage directory.", 5, false, config.moduleName, __line, __file);
         });
       }
     });
