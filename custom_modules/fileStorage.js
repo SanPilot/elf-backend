@@ -7,6 +7,7 @@ var logger = global.logger,
 fs = require('fs'),
 apiResponses = global.apiResponses,
 crypto = require('crypto'),
+http = require('http'),
 config = require("./config/fileStorage.config.json"),
 maxMessageSize = require("./config/index.config.json").maxMessageSize,
 sanitize = require('sanitize-filename'),
@@ -383,87 +384,66 @@ exports.createDownload = (params, connection) => {
         return;
       }
 
-      // If the file is too large, it will need to be sliced
-      var remainingSize = stats.size,
-      pieces = [];
-      while(remainingSize !== 0) {
-        remainingSize -= maxMessageSize;
-        pieces.push(maxMessageSize + (remainingSize < 0 ? remainingSize : 0));
-        if(remainingSize < 0) remainingSize = 0;
-      }
-
       // Create the download identifier
       var user = users.getTokenInfo(params.JWT).payload.user;
       var time = Math.floor(new Date() / 1000);
       var id = crypto.createHash('sha256').update(doc.id + ":" + user + time).digest('hex');
       downloadsList[id] = {
         id: id,
-        user: user,
-        time: time,
-        pieces: pieces,
-        numPieces: pieces.length,
-        file: filename
+        file: filename,
+        actualName: doc.fileName
       }
 
+      // Set an expiration for the download
+      var expires = Math.floor(new Date() / 1000) + config.downloadExpiration;
+      setTimeout(() => {
+        downloadsList[id] = undefined;
+      }, config.downloadExpiration);
+
       // Everything is good; send a success message
-      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "pieces": pieces.length, "download": id}, true));
+      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": {"id": id, "expires": expires}}, true));
     });
   });
 }
 
-// Special connection - send file to client
-exports.download = (connection) => {
-  connection.on('message', (message) => {
-    // If the download has been removed from the list, disassociate the connection with the download
-    if(!downloadsList[connection.selectedDownloadId]) {
-      connection.selectedDownloadId = undefined;
-    }
+// Create an HTTP server to send the files to the client
+logger.log("Starting file download server...", 4, false, config.moduleName, __line, __file);
 
-    // We need to know which download this is
-    if(!connection.selectedDownloadId) {
-      if(message.type === 'utf8' && downloadsList[message.utf8Data]) {
-        connection.selectedDownloadId = message.utf8Data;
-        connection.send(apiResponses.strings.success);
-      } else {
-        connection.send(JSON.stringify({
-          type: 'response',
-          status: 'failed',
-          error: 'No download selected'
-        }));
-      }
-      return;
-    }
+// Start HTTP server
+var server = http.createServer((req, res) => {
+  var reqId = req.url.substr(1);
+  if(!downloadsList[reqId]) {
+    res.writeHead(404, {'Content-Type': 'application/json'});
+    res.write(JSON.stringify({
+      type: 'response',
+      status: 'failed',
+      error: 'No download selected'
+    }));
+    res.end();
+    return;
+  }
 
-    var downloadObj = downloadsList[connection.selectedDownloadId];
-
-    // Send the requested piece
-    if(message.type === 'utf8' && (+message.utf8Data).constructor === Number && downloadObj.pieces[(+message.utf8Data)]) {
-      var requestedPiece = +message.utf8Data,
-      startRead = maxMessageSize * requestedPiece,
-      readLength = downloadObj.pieces[requestedPiece];
-      fs.open(downloadObj.file, 'r', (err, fd) => {
-        if(err) {
-          logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
-          connection.send(apiResponses.strings.errors.failed);
-          return;
-        }
-
-        // Read the requested bytes and send it
-        var readBuffer = new Buffer(readLength);
-        fs.read(fd, readBuffer, 0, readLength, startRead, (err, bytesRead, buffer) => {
-          if(err || bytesRead !== readLength) {
-            logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
-            connection.send(apiResponses.strings.errors.failed);
-            return;
-          }
-          connection.send(buffer);
-        });
-      });
-
-      return;
-    }
-
-    // We couldn't figure out what the client wanted
-    connection.send(apiResponses.strings.errors.malformedRequest);
+  // Send the file to the client
+  var downloadObj = downloadsList[reqId],
+  readStream = fs.createReadStream(downloadObj.file);
+  res.writeHead(200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Disposition': `attachment; filename="${downloadObj.actualName}"`
   });
-}
+  readStream.pipe(res);
+  readStream.on('close', () => {
+    // Remove the download from the list
+    downloadsList[reqId] = undefined;
+    res.end();
+  })
+});
+
+// Set up error handling
+server.on("error", (e) => {
+  logger.log("There was an error starting the file download server on port " + config.fileDownloadPort + ": " + e + ".", 1, true, config.moduleName, __line, __file);
+  process.exit(1);
+});
+
+server.listen(config.fileDownloadPort, () => {
+  logger.log("File download server started listening on port " + config.fileDownloadPort + ".", 4, false, config.moduleName, __line, __file);
+});

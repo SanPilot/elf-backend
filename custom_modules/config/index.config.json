@@ -40,7 +40,6 @@
     "resolveShortCode": ["shortCodes", "resolveShortCode"]
   },
   "specialConnections": {
-    "fileupload": ["fileStorage", "upload"],
-    "filedownload": ["fileStorage", "download"]
+    "fileupload": ["fileStorage", "upload"]
   }
 }

@@ -1,5 +1,7 @@
 {
   "moduleName": "File Storage Module (fileStorage.js)",
   "directoryLocation": "./filestorage/",
-  "maxUploadTime": 10800
+  "maxUploadTime": 10800,
+  "fileDownloadPort": 3001,
+  "downloadExpiration": 3600
 }
