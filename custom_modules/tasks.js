@@ -7,7 +7,6 @@ var apiResponses = global.apiResponses,
 logger = global.logger,
 config = require("./config/tasks.config.json"),
 users = require("./users.js"),
-escRegex = users.escRegex,
 notify = require("./notify.daemon.js"),
 xss = require('xss'),
 crypto = require('crypto'),
@@ -60,16 +59,21 @@ exports.searchTags = (params, connection) => {
     return;
   }
 
-  // Create the regex for the db search
-  var testExp = "^" + params.query + ".*$";
-
-  // Search the db for this pattern
-  global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}).toArray((err, docs) => {
+  // Search the db for this tag
+  global.mongoConnect.collection("tags").find({$text: {$search: params.query}}, {score: {$meta: "textScore"}}).sort({score: {$meta: "textScore"}}).toArray((err, docs) => {
     if(err) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
+
+    // Remove score property from each tag
+    docs.forEach((tag, i) => {
+      delete tag.score;
+      docs[i] = tag;
+    });
+
+    // Send the tags to the user
     connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": docs}, true));
   });
 }
@@ -200,6 +204,7 @@ exports.addTask = (params, connection) => {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
+      global.emit(['tasks', task.user, task.project, task.tags]);
       logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName, __line, __file);
       connection.send(JSON.stringify({
         type: "response",
@@ -379,6 +384,7 @@ exports.modifyTask = (params, connection) => {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
+      global.emit(['tasks', newTask.user, newTask.project, newTask.tags]);
       logger.log("Updated task. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
       successFunction();
       connection.send(JSON.stringify({
@@ -451,6 +457,7 @@ exports.addComment = (params, connection) => {
           commentId: params.commentId
         }, parsedComment.mentions[i]);
       }
+      global.emit(params.taskId);
       logger.log("Added comment. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": commentObj}, true));
     });
@@ -524,6 +531,7 @@ exports.modifyComment = (params, connection) => {
           commentId: params.commentId
         }, parsedComment.mentions[i]);
       }
+      global.emit(params.taskId);
       logger.log("Modified comment. (ID:" + params.commentId + ")", 6, false, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
     });

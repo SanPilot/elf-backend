@@ -3,5 +3,6 @@
 	"signingKeyFiles": {
 		"private": "./keys/private.key",
 		"public": "./keys/public.pub"
-	}
+	},
+	"passwordFailedTimeout": 1000
 }

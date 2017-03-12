@@ -156,7 +156,7 @@ exports.finalizeUpload = (params, connection) => {
       }
 
       // Remove the upload from the list
-      uploadsList[params.fileId] = undefined;
+      delete uploadsList[params.fileId];
 
       // Send the result back to the user
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
@@ -171,7 +171,7 @@ exports.upload = (connection) => {
   connection.on('message', (message) => {
     // If the upload has been removed from the list, disassociate the connection with the upload
     if(!uploadsList[connection.selectedUploadId]) {
-      connection.selectedUploadId = undefined;
+      delete connection.selectedUploadId;
     }
 
     // We need to know which upload this is
@@ -219,8 +219,8 @@ exports.upload = (connection) => {
           }
           // If it is, delete the upload
           if(stats.size > uploadObj.size) {
-            connection.selectedUploadId = undefined;
-            uploadsList[uploadObj.id] = undefined;
+            delete connection.selectedUploadId;
+            delete uploadsList[uploadObj.id];
             connection.send(JSON.stringify({
               type: 'response',
               status: 'failed',
@@ -261,7 +261,7 @@ var checkAndDelete = (filename, file) => {
             }
             // Remove the file if it exists in the upload list
             if(uploadsList[file]) {
-              uploadsList[file] = undefined;
+              delete uploadsList[file];
             }
           });
         }
@@ -397,7 +397,7 @@ exports.createDownload = (params, connection) => {
       // Set an expiration for the download
       var expires = Math.floor(new Date() / 1000) + config.downloadExpiration;
       setTimeout(() => {
-        downloadsList[id] = undefined;
+        delete downloadsList[id];
       }, config.downloadExpiration);
 
       // Everything is good; send a success message
@@ -432,8 +432,6 @@ var server = http.createServer((req, res) => {
   });
   readStream.pipe(res);
   readStream.on('close', () => {
-    // Remove the download from the list
-    downloadsList[reqId] = undefined;
     res.end();
   })
 });

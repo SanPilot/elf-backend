@@ -107,14 +107,6 @@ var generateJWT = (payload) => {
   return headerB64 + '.' + payloadB64 + '.' + signatureB64;
 };
 
-// Escape strings to be inserted into regex
-var escRegex = (str) => {
-  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-}
-
-// Make this function available to other modules
-exports.escRegex = escRegex;
-
 // Function to search for users in the db
 exports.searchUsers = (params, connection) => {
   if(!(params.query && params.JWT)) {
@@ -131,16 +123,18 @@ exports.searchUsers = (params, connection) => {
     return;
   }
 
-  // Create the regex for the db search
-  var testExp = "^" + params.query.toLowerCase() + ".*$";
-
-  // Search the db for this pattern
-  global.mongoConnect.collection("users").find({caselessUser:{$regex:testExp}}).toArray((err, docs) => {
+  // Search the db for this user
+  global.mongoConnect.collection("users").find({$text: {$search: params.query}}, {score: {$meta: "textScore"}}).sort({score: {$meta: "textScore"}}).toArray((err, docs) => {
     if(err) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
+
+    // Get each username
+    docs.forEach((user, i) => {
+      docs[i] = user.user;
+    });
     connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": docs}, true));
   });
 }
@@ -207,59 +201,59 @@ exports.getUsers = (params, connection) => {
 
 // Authenticate Users
 var auth = (params, connection) => {
-  // Anti-brute force timeout
-  setTimeout(() => {
-    if(!(params.auth && params.auth[0] && params.auth[1])) {
-      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
-      return;
-    }
-    if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
-    dbMatches("users", {$or: [
-      {caselessUser: params.auth[0].toLowerCase()},
-      {email: params.auth[0].toLowerCase()}
-    ]}, (result) => {
-      if(result.status) {
-        if(result.matches === 1) {
-          var queryCallback = (err, docs) => {
-            if(!err) {
-              if(!docs.active) {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true)); return;}
-              passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
-                if(result.status) {
-                  if(docs.passwd === result.hashedPasswd) {
-                    var expires = Math.floor(new Date() / 1000) + 3600;
-                    connection.send(JSON.stringify({
-                      "type": "response",
-                      "status": "success",
-                      "id": params.id,
-                      "content": {
-                        "token": generateJWT({"user": docs.user, "iat": Math.floor(new Date() / 1000), "expires": expires}),
-                        "expires": expires
-                      }
-                    }));
-                  } else {
-                    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
-                  }
-                } else {
-                  connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-                }
-              });
-            } else {
-              connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-              logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+  if(!(params.auth && params.auth[0] && params.auth[1])) {
+    connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
+    return;
+  }
+  if(typeof params.auth[0] !== "string" || typeof params.auth[1] !== "string") {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true)); return;}
+  dbMatches("users", {$or: [
+    {caselessUser: params.auth[0].toLowerCase()},
+    {email: params.auth[0].toLowerCase()}
+  ]}, (result) => {
+    if(result.status) {
+      if(result.matches === 1) {
+        var queryCallback = (err, docs) => {
+          if(!err) {
+            if(!docs.active) {
+              setTimeout(() => {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));}, config.passwordFailedTimeout);
+              return;
             }
+            passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
+              if(result.status) {
+                if(docs.passwd === result.hashedPasswd) {
+                  var expires = Math.floor(new Date() / 1000) + 3600;
+                  connection.send(JSON.stringify({
+                    "type": "response",
+                    "status": "success",
+                    "id": params.id,
+                    "content": {
+                      "token": generateJWT({"user": docs.user, "iat": Math.floor(new Date() / 1000), "expires": expires}),
+                      "expires": expires
+                    }
+                  }));
+                } else {
+                  setTimeout(() => {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));}, config.passwordFailedTimeout);
+                }
+              } else {
+                connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+              }
+            });
+          } else {
+            connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+            logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
           }
-          global.mongoConnect.collection("users").find({$or: [
-            {caselessUser: params.auth[0].toLowerCase()},
-            {email: params.auth[0].toLowerCase()}
-          ]}).limit(1).next(queryCallback);
-        } else {
-          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
         }
+        global.mongoConnect.collection("users").find({$or: [
+          {caselessUser: params.auth[0].toLowerCase()},
+          {email: params.auth[0].toLowerCase()}
+        ]}).limit(1).next(queryCallback);
       } else {
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        setTimeout(() => {connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));}, config.passwordFailedTimeout);
       }
-    });
-  }, 800);
+    } else {
+      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+    }
+  });
 }
 exports.auth = auth;
 
@@ -367,6 +361,7 @@ exports.modifyUser = (params, connection) => {
       // Update the user
       global.mongoConnect.collection("users").updateOne({user:user}, {$set: {name: name, email: email, miscKeys: miscKeys, passwd: result.hashedPasswd, salt: salt, projects: projects}}, (err) => {
         if(!err) {
+          global.emit(user);
           logger.log("Modified user '" + user + "'.", 6, false, config.moduleName, __line, __file);
           if(modPass) {
             auth({auth:[user,passwd]}, connection);
@@ -431,7 +426,8 @@ exports.removeUser = (params, connection) => {
         // Set user to inactive
         global.mongoConnect.collection("users").updateOne({caselessUser:userToDelete}, {$set: {active:false}}, (err) => {
           if(!err) {
-            logger.log("Removed user '" + userToDelete + "'.")
+            global.emit(getTokenInfo(params.JWT).payload.user);
+            logger.log("Removed user '" + getTokenInfo(params.JWT).payload.user + "'.")
             connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
           } else {
             logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
