@@ -8,12 +8,14 @@
   },
   "connectionDelay": 2000,
   "requireModules": {
+    "events": "events.js",
     "users": "users.js",
     "tasks": "tasks.js",
     "notify": "notify.daemon.js",
     "fileStorage": "fileStorage.js",
     "projects": "projects.js",
-    "shortCodes": "shortCodes.js"
+    "shortCodes": "shortCodes.js",
+    "search": "search.js"
   },
   "apiRoutes": {
     "getUsers": ["users", "getUsers"],
@@ -37,9 +39,12 @@
     "modifyProject": ["projects", "modifyProject"],
     "listProjects": ["projects", "listProjects"],
     "listProjectItems": ["projects", "listProjectItems"],
-    "resolveShortCode": ["shortCodes", "resolveShortCode"]
+    "resolveShortCode": ["shortCodes", "resolveShortCode"],
+    "search": ["search", "search"],
+    "suggestions": ["search", "suggestions"]
   },
   "specialConnections": {
-    "fileupload": ["fileStorage", "upload"]
+    "fileupload": ["fileStorage", "upload"],
+    "events": ["events", "events"]
   }
 }

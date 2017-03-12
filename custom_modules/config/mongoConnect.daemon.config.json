@@ -41,6 +41,13 @@
       "index": {"projects": 1}
     },
     {
+      "collection": "users",
+      "index": {
+        "user": "text",
+        "name": "text"
+      }
+    },
+    {
       "collection": "tasks",
       "index": {"id": 1},
       "options": {
@@ -50,6 +57,10 @@
     {
       "collection": "tasks",
       "index": {"project": 1}
+    },
+    {
+      "collection": "tasks",
+      "index": {"date": -1}
     },
     {
       "collection": "files",
@@ -66,6 +77,10 @@
       }
     },
     {
+      "collection": "tags",
+      "index": {"tag": "text"}
+    },
+    {
       "collection": "projects",
       "index": {"id": 1},
       "options": {
@@ -78,6 +93,22 @@
       "options": {
         "unique": true
       }
+    },
+    {
+      "collection": "tasks",
+      "index": {
+        "body": "text",
+        "caselessUser": "text",
+        "comments.comment": "text",
+        "comments.mentions": "text",
+        "comments.user": "text",
+        "summary": "text",
+        "tags": "text"
+      }
+    },
+    {
+      "collection": "suggestions",
+      "index": {"suggestion": "text"}
     }
   ]
 }

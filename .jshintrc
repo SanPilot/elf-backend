@@ -32,7 +32,7 @@
   "eqeqeq"        : true,
   "eqnull"        : false,
   "evil"          : false,
-  "expr"          : false,
+  "expr"          : true,
   "forin"         : false,
   "immed"         : true,
   "latedef"       : true,

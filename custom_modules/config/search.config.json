@@ -1,0 +1,5 @@
+{
+  "moduleName": "Search Module (search.js)",
+  "searchDepth": 3000,
+  "maxResults": 1000
+}
