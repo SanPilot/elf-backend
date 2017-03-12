@@ -16,6 +16,9 @@ Elf is a web-based application for submitting, viewing and processing lab reques
 
 You can find a project abstract at `meta/Lab Request Application - Project Abstract.pdf`.
 
+## Documentation
+Further documentation, can be found in `DOCS.md`.
+
 ## Notes
 For security purposes, it is recommended to use a TLS (HTTPS)-enabled proxy facing the public to proxy API responses from the API. This will increase security by encrypting API requests and responses with HTTPS. A web proxy such as NGINX or Apache can be used to accomplish this.
 
