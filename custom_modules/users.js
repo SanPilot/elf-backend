@@ -427,7 +427,7 @@ exports.removeUser = (params, connection) => {
         global.mongoConnect.collection("users").updateOne({caselessUser:userToDelete}, {$set: {active:false}}, (err) => {
           if(!err) {
             global.emit(getTokenInfo(params.JWT).payload.user);
-            logger.log("Removed user '" + getTokenInfo(params.JWT).payload.user + "'.")
+            logger.log("Removed user '" + getTokenInfo(params.JWT).payload.user + "'.", 6, false, config.moduleName, __line, __file)
             connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
           } else {
             logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
