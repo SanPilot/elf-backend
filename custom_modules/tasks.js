@@ -222,7 +222,7 @@ exports.listTasks = (params, connection) => {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return;
   }
-  if(!(params.request.constructor === {}.constructor && (!params.request.ids || params.request.ids.constructor === [].constructor) && (!params.request.users || params.request.users.constructor === [].constructor))) {
+  if(!(params.request.constructor === {}.constructor && (!params.request.ids || params.request.ids.constructor === [].constructor) && (!params.request.users || params.request.users.constructor === [].constructor) && (!params.request.done || params.request.done.constructor === Boolean))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {id: params.id}, true));
     return;
   }
@@ -233,11 +233,13 @@ exports.listTasks = (params, connection) => {
   }
 
   // Get the tasks that the user wants
-  var getIDs = (params.request.ids ? params.request.ids : false), getUserTasks = (params.request.users ? params.request.users : false);
+  var getIDs = (params.request.ids ? params.request.ids : false),
+  getUserTasks = (params.request.users ? params.request.users : false),
+  getDone = (params.request.done === true ? true : false);
   getIDs = (getIDs.length ? getIDs : false);
   getUserTasks = (getUserTasks.length ? getUserTasks : false);
   if(!(getIDs || getUserTasks)) {
-    global.mongoConnect.collection("tasks").find({markedAsDone: false}).toArray((err, docs) => {
+    global.mongoConnect.collection("tasks").find({markedAsDone: getDone}).limit(1000).toArray((err, docs) => {
       if(err) {
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
@@ -325,7 +327,7 @@ exports.modifyTask = (params, connection) => {
     }
     var task = docs[0], newTask, successFunction;
 
-    if(task.user.toLowerCase() === user) {
+    if(task.user.toLowerCase() === user && params.done === undefined) {
       var generated = generateTaskBody(params, connection);
       if(generated === false) {
         return;
