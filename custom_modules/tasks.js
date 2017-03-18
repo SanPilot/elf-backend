@@ -7,6 +7,7 @@ var apiResponses = global.apiResponses,
 logger = global.logger,
 config = require("./config/tasks.config.json"),
 users = require("./users.js"),
+escRegex = users.escRegex,
 notify = require("./notify.daemon.js"),
 xss = require('xss'),
 crypto = require('crypto'),
@@ -59,19 +60,16 @@ exports.searchTags = (params, connection) => {
     return;
   }
 
-  // Search the db for this tag
-  global.mongoConnect.collection("tags").find({$text: {$search: params.query}}, {score: {$meta: "textScore"}}).sort({score: {$meta: "textScore"}}).toArray((err, docs) => {
+  // Create the regex for the db search
+  var testExp = "^" + escRegex(params.query) + ".*$";
+
+  // Search the db for this pattern
+  global.mongoConnect.collection("tags").find({tag:{$regex:testExp}}).toArray((err, docs) => {
     if(err) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
       return;
     }
-
-    // Remove score property from each tag
-    docs.forEach((tag, i) => {
-      delete tag.score;
-      docs[i] = tag;
-    });
 
     // Send the tags to the user
     connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": docs}, true));

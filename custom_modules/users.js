@@ -107,6 +107,14 @@ var generateJWT = (payload) => {
   return headerB64 + '.' + payloadB64 + '.' + signatureB64;
 };
 
+// Escape strings to be inserted into regex
+var escRegex = (str) => {
+  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+}
+
+// Make this function available to other modules
+exports.escRegex = escRegex;
+
 // Function to search for users in the db
 exports.searchUsers = (params, connection) => {
   if(!(params.query && params.JWT)) {
@@ -123,8 +131,11 @@ exports.searchUsers = (params, connection) => {
     return;
   }
 
-  // Search the db for this user
-  global.mongoConnect.collection("users").find({$text: {$search: params.query}}, {score: {$meta: "textScore"}}).sort({score: {$meta: "textScore"}}).toArray((err, docs) => {
+  // Create the regex for the db search
+  var testExp = "^" + escRegex(params.query.toLowerCase()) + ".*$";
+
+  // Search the db for this pattern
+  global.mongoConnect.collection("users").find({caselessUser:{$regex:testExp}}).toArray((err, docs) => {
     if(err) {
       logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));

@@ -77,10 +77,6 @@
       }
     },
     {
-      "collection": "tags",
-      "index": {"tag": "text"}
-    },
-    {
       "collection": "projects",
       "index": {"id": 1},
       "options": {
