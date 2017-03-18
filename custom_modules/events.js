@@ -60,16 +60,16 @@ exports.events = (connection) => {
 };
 
 // Function to push events to registered users
-var emit = (eid) => {
+var emit = (eid, prefix) => {
   if(eid.constructor === Array) {
     eid.forEach((neid) => {
-      emit(eid);
+      emit(neid, prefix);
     });
     return;
   }
   if(registered[eid]) {
     registered[eid].forEach((connection) => {
-      connection.send(eid);
+      connection.send((prefix ? prefix : "") + eid);
     });
     logger.log(`Emitted EID:${eid} to ${registered[eid].length} users.`, 6, false, config.moduleName, __line, __file);
   }

@@ -36,8 +36,8 @@ var sendNotification = (notification, user, callback, attempt) => {
         }, 10000);
         return;
       }
-      global.emit(docs.user);
-      logger.log("Sent notification to user '" + docs.user + "'.", 6, false, config.moduleName, __line, __file);
+      global.emit("user:" + docs[0].user);
+      logger.log("Sent notification to user '" + docs[0].user + "'.", 6, false, config.moduleName, __line, __file);
       return;
     });
   });

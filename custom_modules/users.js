@@ -361,7 +361,7 @@ exports.modifyUser = (params, connection) => {
       // Update the user
       global.mongoConnect.collection("users").updateOne({user:user}, {$set: {name: name, email: email, miscKeys: miscKeys, passwd: result.hashedPasswd, salt: salt, projects: projects}}, (err) => {
         if(!err) {
-          global.emit(user);
+          global.emit('user:' + user);
           logger.log("Modified user '" + user + "'.", 6, false, config.moduleName, __line, __file);
           if(modPass) {
             auth({auth:[user,passwd]}, connection);
@@ -426,7 +426,7 @@ exports.removeUser = (params, connection) => {
         // Set user to inactive
         global.mongoConnect.collection("users").updateOne({caselessUser:userToDelete}, {$set: {active:false}}, (err) => {
           if(!err) {
-            global.emit(getTokenInfo(params.JWT).payload.user);
+            global.emit('user:' + getTokenInfo(params.JWT).payload.user);
             logger.log("Removed user '" + getTokenInfo(params.JWT).payload.user + "'.", 6, false, config.moduleName, __line, __file)
             connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
           } else {

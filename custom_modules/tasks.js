@@ -204,7 +204,8 @@ exports.addTask = (params, connection) => {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
-      global.emit(['tasks', task.user, task.project, task.tags]);
+      global.emit(['tasks', 'user' + task.user, 'project' + task.project]);
+      global.emit(task.tags, "tag:");
       logger.log("Created new task. (ID:" + task.id + ")", 6, false, config.moduleName, __line, __file);
       connection.send(JSON.stringify({
         type: "response",
@@ -386,7 +387,8 @@ exports.modifyTask = (params, connection) => {
         connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
         return;
       }
-      global.emit(['tasks', newTask.user, newTask.project, newTask.tags]);
+      global.emit(['tasks', 'user:' + newTask.user, 'project:' + newTask.project, 'task:' + newTask.id]);
+      global.emit(newTask.tags, 'tag:');
       logger.log("Updated task. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
       successFunction();
       connection.send(JSON.stringify({
@@ -459,7 +461,7 @@ exports.addComment = (params, connection) => {
           commentId: params.commentId
         }, parsedComment.mentions[i]);
       }
-      global.emit(params.taskId);
+      global.emit('task:' + params.taskId);
       logger.log("Added comment. (ID:" + id + ")", 6, false, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": commentObj}, true));
     });
@@ -533,7 +535,7 @@ exports.modifyComment = (params, connection) => {
           commentId: params.commentId
         }, parsedComment.mentions[i]);
       }
-      global.emit(params.taskId);
+      global.emit('task:' + params.taskId);
       logger.log("Modified comment. (ID:" + params.commentId + ")", 6, false, config.moduleName, __line, __file);
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
     });
