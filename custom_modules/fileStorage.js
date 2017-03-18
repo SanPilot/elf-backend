@@ -158,6 +158,9 @@ exports.finalizeUpload = (params, connection) => {
       // Remove the upload from the list
       delete uploadsList[params.fileId];
 
+      // Report successful transfer
+      logger.log(`Completed transfer of file from user. (ID:${params.fileId})`, 6, false, config.moduleName, __line, __file);
+
       // Send the result back to the user
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
     });
@@ -390,6 +393,7 @@ exports.createDownload = (params, connection) => {
       var id = crypto.createHash('sha256').update(doc.id + ":" + user + time).digest('hex');
       downloadsList[id] = {
         id: id,
+        fileId: doc.id,
         file: filename,
         actualName: doc.fileName
       }
@@ -432,6 +436,8 @@ var server = http.createServer((req, res) => {
   });
   readStream.pipe(res);
   readStream.on('close', () => {
+    // Report success transfer
+    logger.log(`Completed transfer of file to user. (ID:${downloadObj.fileId})`, 6, false, config.moduleName, __line, __file);
     res.end();
   })
 });
