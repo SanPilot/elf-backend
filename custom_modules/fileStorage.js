@@ -9,15 +9,13 @@ apiResponses = global.apiResponses,
 crypto = require('crypto'),
 http = require('http'),
 config = require("./config/fileStorage.config.json"),
-maxMessageSize = require("./config/index.config.json").maxMessageSize,
 sanitize = require('sanitize-filename'),
 users = require('./users.js'),
-uploadsList = {},
-downloadsList = {},
-maxSize = 4294967295;
+transferList = {},
+maxSize = 4294967295,
 
 // Helper function to create required directories
-var createDirs = (user) => {
+createDirs = (user) => {
   user = user || false;
 
   // Callback hell (we need to check and make sure all directories are writable and create ones that don't exist yet) ->
@@ -89,21 +87,21 @@ exports.createUpload = (params, connection) => {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.authFailed, {"id": params.id}, true));
     return;
   }
-  var user = users.getTokenInfo(params.JWT).payload.user;
-  var createdAt = Math.floor(new Date() / 1000);
-  var id = crypto.createHash('sha256').update(params.file.name + ":" + user + createdAt).digest('hex');
-
-  var uploadObj = {
+  var user = users.getTokenInfo(params.JWT).payload.user,
+  createdAt = Math.floor(new Date() / 1000),
+  id = crypto.createHash('sha256').update(params.file.name + ":" + user + createdAt).digest('hex'),
+  uploadObj = {
     id: id,
     fileName: sanitize(params.file.name),
     user: user,
     createdAt: createdAt,
     size: params.file.size,
-    mimetype: params.file.type
-  }
+    mimetype: params.file.type,
+    type: "upload"
+  },
 
   // Create the file
-  var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
+  filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
   fs.writeFile(filename, "", (err) => {
     if(err) {
       logger.log("There was an error opening a file for writing in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
@@ -112,136 +110,94 @@ exports.createUpload = (params, connection) => {
     }
 
     // Add this to the list of uploads
-    uploadsList[id] = uploadObj;
+    transferList[id] = uploadObj;
 
     // Send this back to the user
-    connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "upload": uploadObj, "maxMessageSize": maxMessageSize}, true));
+    connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "upload": uploadObj}, true));
   });
 }
 
 // Function to finalize upload, adding the file to the database
-exports.finalizeUpload = (params, connection) => {
-  if(!(params.fileId && params.fileId.constructor === "".constructor && uploadsList[params.fileId])) {
-    connection.send(apiResponses.concatObj(apiResponses.JSON.errors[(!params.fileId ? 'missingParameters' : 'malformedRequest')], {"id": params.id}, true));
-    return;
-  }
+var finalizeUpload = (uploadObj, res) => {
+  // Remove the upload from the list
+  delete transferList[uploadObj.id];
 
-  var uploadObj = uploadsList[params.fileId];
   var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
 
   // Check if the file size matches the entry file size
   fs.stat(filename, (err, stats) => {
     if(err) {
-      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file);      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-      connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+      logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file);
+      res.writeHead(500);
+      res.end(apiResponses.strings.errors.failed);
       return;
     }
 
     // If the size doesn't match, refuse the upload
     if(stats.size !== uploadObj.size) {
-      connection.send(JSON.stringify({
+      res.writeHead(500);
+      res.end(JSON.stringify({
         type: 'response',
         status: 'failed',
-        error: 'Incorrect size'
+        error: 'Incorrect size',
       }));
       return;
     }
 
     // Add this file to the DB
-    global.mongoConnect.collection("files").insertOne(uploadsList[params.fileId], (err, r) => {
+    global.mongoConnect.collection("files").insertOne(uploadObj, (err, r) => {
       if(err) {
         logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
-        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        res.writeHead(500);
+        res.end(apiResponses.strings.errors.failed);
         return;
       }
-
-      // Remove the upload from the list
-      delete uploadsList[params.fileId];
 
       // Report successful transfer
-      logger.log(`Completed transfer of file from user. (ID:${params.fileId})`, 6, false, config.moduleName, __line, __file);
+      logger.log(`Completed transfer of file from user. (ID:${uploadObj.id})`, 6, false, config.moduleName, __line, __file);
 
       // Send the result back to the user
-      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id}, true));
+      res.writeHead(200);
+      res.end(apiResponses.strings.success);
     });
   });
-}
+},
 
-// The upload function handles a special connection. It recieves binary data and appends it to the correct file.
-exports.upload = (connection) => {
-  // Variable to determine if server is ready to accept next message
-  var acceptReady = true;
-  connection.on('message', (message) => {
-    // If the upload has been removed from the list, disassociate the connection with the upload
-    if(!uploadsList[connection.selectedUploadId]) {
-      delete connection.selectedUploadId;
-    }
+// Function to recieve a file from the client
+upload = (uploadObj, res, req) => {
+  var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id,
+  writeStream = fs.createWriteStream(filename),
+  failed = false;
 
-    // We need to know which upload this is
-    if(!connection.selectedUploadId) {
-      if(message.type === 'utf8' && uploadsList[message.utf8Data]) {
-        connection.selectedUploadId = message.utf8Data;
-        connection.send(apiResponses.strings.success);
-      } else {
-        connection.send(JSON.stringify({
-          type: 'response',
-          status: 'failed',
-          error: 'No upload selected'
-        }));
-      }
-      return;
-    }
+  // Send the request to the file
+  req.pipe(writeStream);
 
-    var uploadObj = uploadsList[connection.selectedUploadId];
-    var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + connection.selectedUploadId;
-
-    // Recieve binary data and add it to file
-    if(message.type === 'binary') {
-      if(!acceptReady) {
-        connection.send(JSON.stringify({
-          type: 'response',
-          status: 'failed',
-          error: 'Server not ready'
-        }));
-        return;
-      }
-      acceptReady = false;
-      // Append this data to the file
-      fs.appendFile(filename, message.binaryData, (err) => {
-        acceptReady = true;
-        if(err) {
-          logger.log("There was an error writing to a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
-          connection.send(apiResponses.strings.errors.failed);
-          return;
-        }
-        // See if the new size of the file is too large
-        fs.stat(filename, (err, stats) => {
-          if(err) {
-            logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
-            return;
-          }
-          // If it is, delete the upload
-          if(stats.size > uploadObj.size) {
-            delete connection.selectedUploadId;
-            delete uploadsList[uploadObj.id];
-            connection.send(JSON.stringify({
-              type: 'response',
-              status: 'failed',
-              error: 'File size too large'
-            }));
-            return;
-          }
-          connection.send(apiResponses.strings.success);
-        });
-      })
-    } else {
-      connection.send(apiResponses.strings.errors.malformedRequest);
+  // Prevent upload from going over reported size and ensure file hasn't expired
+  req.on('data', () => {
+    if(writeStream.bytesWritten > uploadObj.size || transferList[uploadObj.id] === undefined) {
+      // Cancel the upload
+      failed = true;
+      res.writeHead(500);
+      res.end(JSON.stringify({
+        type: 'response',
+        status: 'failed',
+        error: (transferList[uploadObj.id] ? 'Incorrect size' : 'No upload selected')
+      }));
+      writeStream.close();
     }
   });
-}
+
+  // Finalize the upload when it finishes
+  writeStream.on('close', () => {
+    if(failed) return;
+
+    // Handoff connection to finalizeUpload function
+    finalizeUpload(uploadObj, res);
+  });
+},
 
 // A function used in the deleteAbandoned function below
-var checkAndDelete = (filename, file) => {
+checkAndDelete = (filename, file) => {
   fs.stat(filename, (err, stats) => {
     if(err) {
       // There's nothing we can do, just log and quit
@@ -263,18 +219,18 @@ var checkAndDelete = (filename, file) => {
               return;
             }
             // Remove the file if it exists in the upload list
-            if(uploadsList[file]) {
-              delete uploadsList[file];
+            if(transferList[file]) {
+              delete transferList[file];
             }
           });
         }
       });
     }
   });
-}
+},
 
 // Maintenance function to delete abandoned uploads
-var deleteAbandoned = (attempt, user, directory) => {
+deleteAbandoned = (attempt, user, directory) => {
   attempt = attempt || 0;
   user = user || false;
   directory = (user ? config.directoryLocation + "/" + directory : config.directoryLocation);
@@ -297,7 +253,7 @@ var deleteAbandoned = (attempt, user, directory) => {
       }
     }
   });
-}
+};
 
 // Run this function every minute
 setInterval(deleteAbandoned, 60000);
@@ -391,63 +347,74 @@ exports.createDownload = (params, connection) => {
       var user = users.getTokenInfo(params.JWT).payload.user;
       var time = Math.floor(new Date() / 1000);
       var id = crypto.createHash('sha256').update(doc.id + ":" + user + time).digest('hex');
-      downloadsList[id] = {
+      transferList[id] = {
         id: id,
         fileId: doc.id,
         file: filename,
-        actualName: doc.fileName
+        actualName: doc.fileName,
+        type: "download"
       }
 
       // Set an expiration for the download
       var expires = Math.floor(new Date() / 1000) + config.downloadExpiration;
       setTimeout(() => {
-        delete downloadsList[id];
+        delete transferList[id];
       }, config.downloadExpiration);
 
       // Everything is good; send a success message
       connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, "content": {"id": id, "expires": expires}}, true));
     });
   });
-}
+};
 
-// Create an HTTP server to send the files to the client
-logger.log("Starting file download server...", 4, false, config.moduleName, __line, __file);
 
-// Start HTTP server
-var server = http.createServer((req, res) => {
-  var reqId = req.url.substr(1);
-  if(!downloadsList[reqId]) {
-    res.writeHead(404, {'Content-Type': 'application/json'});
-    res.write(JSON.stringify({
-      type: 'response',
-      status: 'failed',
-      error: 'No download selected'
-    }));
-    res.end();
-    return;
-  }
-
-  // Send the file to the client
-  var downloadObj = downloadsList[reqId],
-  readStream = fs.createReadStream(downloadObj.file);
+// Function to send the file to the client
+var download = (downloadObj, res) => {
+  var readStream = fs.createReadStream(downloadObj.file);
   res.writeHead(200, {
     'Content-Type': 'application/octet-stream',
     'Content-Disposition': `attachment; filename="${downloadObj.actualName}"`
   });
   readStream.pipe(res);
   readStream.on('close', () => {
-    // Report success transfer
+    // Report successful transfer
     logger.log(`Completed transfer of file to user. (ID:${downloadObj.fileId})`, 6, false, config.moduleName, __line, __file);
     res.end();
-  })
+  });
+};
+
+// Create an HTTP server to transfer files
+logger.log("Starting file transfer server...", 4, false, config.moduleName, __line, __file);
+
+// Start HTTP server
+var server = http.createServer((req, res) => {
+  var reqId = req.url.substr(1),
+  selectedTransfer = transferList[reqId];
+  if(!selectedTransfer) {
+    res.writeHead(404, {'Content-Type': 'application/json'});
+    res.write(JSON.stringify({
+      type: 'response',
+      status: 'failed',
+      error: 'No transfer selected'
+    }));
+    res.end();
+    return;
+  }
+
+  // Hand the connection off to either the download or upload function
+  if(selectedTransfer.type === "download") {
+    download(selectedTransfer, res);
+  } else {
+    upload(selectedTransfer, res, req);
+  }
 });
 
 // Set up error handling
 server.on("error", (e) => {
-  logger.log("There was an error starting the file download server on port " + config.fileDownloadPort + ": " + e + ".", 1, true, config.moduleName, __line, __file);
+  logger.log("There was an error starting the file transfer server on port " + config.fileTransferPort + ": " + e + ".", 1, true, config.moduleName, __line, __file);
   process.exit(1);
 });
 
-server.listen(config.fileDownloadPort, () => {
-  logger.log("File download server started listening on port " + config.fileDownloadPort + ".", 4, false, config.moduleName, __line, __file);
+server.listen(config.fileTransferPort, () => {
+  logger.log("File transfer server started listening on port " + config.fileTransferPort + ".", 4, false, config.moduleName, __line, __file);
 });
