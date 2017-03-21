@@ -46,9 +46,7 @@ server.listen(config.usePort, () => {
 
 // Start WebSocket server
 var wsServer = new webSocketServer({
-  httpServer: server,
-  maxReceivedFrameSize: config.maxMessageSize,
-  maxRecievedMessageSize: config.maxMessageSize
+  httpServer: server
 });
 
 wsServer.on('request', (request) => {
