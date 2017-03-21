@@ -139,7 +139,7 @@ var finalizeUpload = (uploadObj, res) => {
       res.end(JSON.stringify({
         type: 'response',
         status: 'failed',
-        error: 'Incorrect size'
+        error: 'Incorrect size',
       }));
       return;
     }
