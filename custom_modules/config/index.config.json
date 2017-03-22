@@ -43,7 +43,6 @@
     "suggestions": ["search", "suggestions"]
   },
   "specialConnections": {
-    "fileupload": ["fileStorage", "upload"],
     "events": ["events", "events"]
   }
 }
