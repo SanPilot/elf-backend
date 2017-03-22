@@ -112,7 +112,7 @@ exports.checkArray = checkArray;
 
 // This function is the common code between addTask and modifyTask - it checks all the variables then creates the task's body
 var generateTaskBody = (params, connection) => {
-  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags && params.task.summary && params.task.dueDate)) {
+  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags && params.task.summary)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return false;
   }
