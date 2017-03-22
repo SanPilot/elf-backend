@@ -112,11 +112,11 @@ exports.checkArray = checkArray;
 
 // This function is the common code between addTask and modifyTask - it checks all the variables then creates the task's body
 var generateTaskBody = (params, connection) => {
-  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags && params.task.summary)) {
+  if(!(params.JWT && params.task && params.task.project && params.task.priority !== undefined && params.task.body && params.task.attachedFiles && params.task.tags && params.task.summary && params.task.dueDate)) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.missingParameters, {"id": params.id}, true));
     return false;
   }
-  if(!(params.task.constructor === {}.constructor && params.task.project.constructor === String && params.task.priority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === Array && checkArray(params.task.attachedFiles, String) && params.task.tags.constructor === Array && checkArray(params.task.tags, String) && params.task.summary.constructor === String)) {
+  if(!(params.task.constructor === {}.constructor && params.task.project.constructor === String && params.task.priority.constructor === true.constructor && params.task.body.constructor === "".constructor && params.task.attachedFiles.constructor === Array && checkArray(params.task.attachedFiles, String) && params.task.tags.constructor === Array && checkArray(params.task.tags, String) && params.task.summary.constructor === String && params.task.dueDate.constructor === Number && params.task.dueDate > Math.floor(Date.now() / 1000))) {
     connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": params.id}, true));
     return false;
   }
@@ -141,6 +141,7 @@ var generateTaskBody = (params, connection) => {
       id: id,
       summary: params.task.summary,
       createdAt: createdAt,
+      dueDate: params.task.dueDate,
       user: users.getTokenInfo(params.JWT).payload.user,
       caselessUser: users.getTokenInfo(params.JWT).payload.user.toLowerCase(),
       project: params.task.project,
@@ -339,6 +340,7 @@ exports.modifyTask = (params, connection) => {
       newTask = {
         id: id,
         createdAt: Math.floor(new Date() / 1000),
+        dueDate: params.task.dueDate,
         user: task.user,
         caselessUser: task.caselessUser,
         project: params.task.project,
