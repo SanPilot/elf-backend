@@ -31,7 +31,6 @@
     "searchTags": ["tasks", "searchTags"],
     "getNotifications": ["notify", "getNotifications"],
     "createUpload": ["fileStorage", "createUpload"],
-    "finalizeUpload": ["fileStorage", "finalizeUpload"],
     "fileInfo": ["fileStorage", "fileInfo"],
     "createDownload": ["fileStorage", "createDownload"],
     "createProject": ["projects", "createProject"],
