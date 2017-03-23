@@ -119,9 +119,6 @@ exports.createUpload = (params, connection) => {
 
 // Function to finalize upload, adding the file to the database
 var finalizeUpload = (uploadObj, res) => {
-  // Remove the upload from the list
-  delete transferList[uploadObj.id];
-
   var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id;
 
   // Check if the file size matches the entry file size
@@ -165,27 +162,19 @@ var finalizeUpload = (uploadObj, res) => {
 
 // Function to recieve a file from the client
 upload = (uploadObj, res, req) => {
+  // Remove the upload from the list
+  delete transferList[uploadObj.id];
+
+  // Add CORS headers to response
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, accept');
+
   var filename = config.directoryLocation + "/" + sanitize(uploadObj.user) + "/" + uploadObj.id,
   writeStream = fs.createWriteStream(filename),
   failed = false;
 
   // Send the request to the file
   req.pipe(writeStream);
-
-  // Prevent upload from going over reported size and ensure file hasn't expired
-  req.on('data', () => {
-    if(writeStream.bytesWritten > uploadObj.size || transferList[uploadObj.id] === undefined) {
-      // Cancel the upload
-      failed = true;
-      res.writeHead(500);
-      res.end(JSON.stringify({
-        type: 'response',
-        status: 'failed',
-        error: (transferList[uploadObj.id] ? 'Incorrect size' : 'No upload selected')
-      }));
-      writeStream.close();
-    }
-  });
 
   // Finalize the upload when it finishes
   writeStream.on('close', () => {
@@ -217,10 +206,6 @@ checkAndDelete = (filename, file) => {
             if(err) {
               logger.log("There was an error removing a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
               return;
-            }
-            // Remove the file if it exists in the upload list
-            if(transferList[file]) {
-              delete transferList[file];
             }
           });
         }
@@ -352,7 +337,8 @@ exports.createDownload = (params, connection) => {
         fileId: doc.id,
         file: filename,
         actualName: doc.fileName,
-        type: "download"
+        type: "download",
+        size: doc.size
       }
 
       // Set an expiration for the download
@@ -373,7 +359,8 @@ var download = (downloadObj, res) => {
   var readStream = fs.createReadStream(downloadObj.file);
   res.writeHead(200, {
     'Content-Type': 'application/octet-stream',
-    'Content-Disposition': `attachment; filename="${downloadObj.actualName}"`
+    'Content-Disposition': `attachment; filename="${downloadObj.actualName}"`,
+    'Content-Length': downloadObj.size
   });
   readStream.pipe(res);
   readStream.on('close', () => {
@@ -388,6 +375,16 @@ logger.log("Starting file transfer server...", 4, false, config.moduleName, __li
 
 // Start HTTP server
 var server = http.createServer((req, res) => {
+  // Set CORS headers
+  if(req.method === "OPTIONS") {
+    res.writeHead(200, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'content-type, accept'
+    });
+    res.end();
+    return;
+  }
+
   var reqId = req.url.substr(1),
   selectedTransfer = transferList[reqId];
   if(!selectedTransfer) {
