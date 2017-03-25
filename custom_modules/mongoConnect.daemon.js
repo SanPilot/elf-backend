@@ -45,16 +45,17 @@ if(config.auth.credentials) {
 }
 
 // Connect to DB
-var url = "mongodb://" + auth + config.dbAddress + ":" + config.dbPort + "/" + endString;
+var url = "mongodb://" + auth + config.dbAddress + ":" + config.dbPort + "/" + endString,
+authlessUrl = config.dbAddress + ":" + config.dbPort;
 
 // Function create connection
 var dbConnect = (callback) => {
   MongoClient.connect(url, (err, db) => {
     if(callback) callback();
     if(!err) {
-      logger.log("Successfully connected to database at " + url + ".", 4, false, config.moduleName, __line, __file);
+      logger.log("Successfully connected to database at " + authlessUrl + ".", 4, false, config.moduleName, __line, __file);
     } else {
-      logger.log("Could not connect to database at " + url + ". Is the database running? (" + err + ")", 1, true, config.moduleName, __line, __file);
+      logger.log("Could not connect to database at " + authlessUrl + ". Is the database running? (" + err + ")", 1, true, config.moduleName, __line, __file);
       process.exit(1);
     }
     global.mongoConnect = db;
