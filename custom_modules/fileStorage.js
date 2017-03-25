@@ -193,8 +193,8 @@ checkAndDelete = (filename, file) => {
       logger.log("There was an error reading a file in directory '" + config.directoryLocation + "'. This may be due to incorrectly set permissions.", 2, true, config.moduleName, __line, __file)
       return;
     }
-    if(Math.floor((new Date() - stats.mtime) / 1000) > config.maxUploadTime) {
-      // This file was last modified over the specified maxUploadTime, if it is abandoned, delete it
+    if(Math.floor((new Date() - stats.mtime) / 1000) > 3600000) {
+      // This file is abandoned, delete it
       global.mongoConnect.collection("files").findOne({id: file}, (err, doc) => {
         if(err) {
           logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
