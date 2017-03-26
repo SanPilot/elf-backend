@@ -175,7 +175,7 @@ This action is used to register a new user.
       }
     }
 
-### <a name="modify_user" id="modify_user"></a>`modfiyUser`
+### <a name="modify_user" id="modify_user"></a>`modifyUser`
 
 `AUTH`
 
