@@ -4,5 +4,6 @@
 		"private": "./keys/private.key",
 		"public": "./keys/public.pub"
 	},
-	"passwordFailedTimeout": 1000
+	"passwordFailedTimeout": 1000,
+	"tokenExpiration": 604800
 }

@@ -232,7 +232,7 @@ var auth = (params, connection) => {
             passwdHash(params.auth[1], docs.user, docs.salt, (result) => {
               if(result.status) {
                 if(docs.passwd === result.hashedPasswd) {
-                  var expires = Math.floor(new Date() / 1000) + 3600;
+                  var expires = Math.floor(new Date() / 1000) + config.tokenExpiration;
                   connection.send(JSON.stringify({
                     "type": "response",
                     "status": "success",
