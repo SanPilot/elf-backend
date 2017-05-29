@@ -68,13 +68,6 @@ wsServer.on('request', (request) => {
 
     // accept message
     connection.on('message', (message) => {
-      // Special ping/pong messaging to determine connectivity
-      if(message.type === "utf8" && message.utf8Data === "ping") {
-        connection.send("pong");
-        // And that's it!
-        return;
-      }
-
       if(++messagesInLastSecond > config.freqBlock.messagesAllowedPerSecond) {
         freqBlock = true;
         clearTimeout(freqBlockTimeout);
@@ -83,7 +76,7 @@ wsServer.on('request', (request) => {
         }, config.freqBlock.blockTime);
         logger.log("Possibly malacious requests blocked for being too frequent from " + connection.remoteAddress + ".", 4, true, config.moduleName, __line, __file);
       }
-      
+
       if(connection.isSpecialConnection) return; // This is a special connection, don't respond to the message
 
       if(!freqBlock) {
@@ -110,6 +103,7 @@ wsServer.on('request', (request) => {
             connection.send(apiResponses.strings.errors.malformedRequest);
             return;
           }
+
           if(msgObject.id) {
             if(msgObject.action) {
               if(config.apiRoutes[msgObject.action]) {
