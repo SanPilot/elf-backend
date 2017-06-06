@@ -13,8 +13,8 @@ fileStorage = require('./fileStorage.js');
 
 // Function for password hashing
 var passwdHash = (passwd, user, salt, callback) => {
-  var userHash = crypto.createHash('sha512').update(user).digest('hex');
-  crypto.pbkdf2(passwd, salt + userHash + salt, 100000, 512, 'sha512', (err, key) => {
+  var userHash = crypto.createHash('sha256').update(user).digest('hex');
+  crypto.pbkdf2(passwd, salt + userHash + salt, 10000, 256, 'sha256', (err, key) => {
     if(!err) {
       callback({"status":true,"hashedPasswd":key.toString('hex')});
     } else {
