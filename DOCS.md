@@ -353,7 +353,7 @@ This call can be used to modify a task.
       },
       done: true,
       JWT: *JWT TOKEN*,
-      id: *ID*
+      modifyId: *ID*
     }
 
 *Response:*
@@ -469,6 +469,8 @@ This call retrieves a list of the user's notifications.
     {
       type: 'response',
       status: 'success',
+      page: *REQUESTED PAGE*,
+      pages: *TOTAL PAGES*,
       content: [ ... ],
       id: *ID*
     }
