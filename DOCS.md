@@ -469,9 +469,11 @@ This call retrieves a list of the user's notifications.
     {
       type: 'response',
       status: 'success',
-      page: *REQUESTED PAGE*,
-      pages: *TOTAL PAGES*,
-      content: [ ... ],
+      content: {
+        notifications: [ ... ],
+        page: *REQUESTED PAGE*,
+        pages: *TOTAL PAGES*,
+      },
       id: *ID*
     }
 
