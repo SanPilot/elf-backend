@@ -2,7 +2,7 @@
   "moduleName": "Index.js (index.js)",
   "usePort": 3000,
   "freqBlock": {
-    "messagesAllowedPerSecond": 2,
+    "messagesAllowedPerSecond": 10,
     "blockTime": 10000
   },
   "connectionDelay": 2000,
