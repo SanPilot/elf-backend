@@ -302,9 +302,11 @@ This call can be used to create a new task.
 
 `AUTH`
 
-This call can be used to recieve a list of tasks.
+This call can be used to receive a list of tasks.
 
 *Note: The `request` parameter must be included, but its contents can be empty. If this is the case, it will return all currently open tasks.*
+
+*Note: Only one of the three types of requests can be included in the request parameter.*
 
 **Example:**
 

@@ -253,39 +253,22 @@ exports.listTasks = (params, connection) => {
       }));
     });
   } else {
-    var resArray = [], iterationStop = false;
-    for(var idsi = 0; idsi < getIDs.length; idsi++) {
-      global.mongoConnect.collection("tasks").find({id: getIDs[idsi]}).limit(1).toArray((err, docs) => {
-        if(err || !docs.length) {
-          if(err) logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
-          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-          iterationStop = true;
-          return;
-        }
-        resArray.push(docs[0]);
-        if(idsi === resArray.length && !getUserTasks) {
-          connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, content: resArray}, true));
-        }
-      });
-      if(iterationStop) return;
-    }
-    for(var usersi = 0; usersi < getUserTasks.length; usersi++) {
-      global.mongoConnect.collection("tasks").find({caselessUser: getUserTasks[usersi].toLowerCase()}).limit(1).toArray((err, docs) => {
-        if(err || !docs.length) {
-          logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
-          connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
-          iterationStop = true;
-          return;
-        }
-        resArray.push(docs[0]);
-        if(usersi === resArray.length) {
-          setTimeout(() => {
-            connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, content: resArray}, true));
-          }, 20);
-        }
-      });
-      if(iterationStop) return;
-    }
+
+    // Get tasks for given IDs or users
+    global.mongoConnect.collection("tasks").find({
+      id: {$in: getIDs || getUserTasks}
+    }).toArray((err, docs) => {
+
+      if(err || !docs.length) {
+        if(err) logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
+        connection.send(apiResponses.concatObj(apiResponses.JSON.errors.failed, {"id": params.id}, true));
+        return;
+      }
+
+      connection.send(apiResponses.concatObj(apiResponses.JSON.success, {"id": params.id, content: docs}, true));
+
+    });
+
   }
 }
 
