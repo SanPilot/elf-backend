@@ -255,9 +255,15 @@ exports.listTasks = (params, connection) => {
   } else {
 
     // Get tasks for given IDs or users
-    global.mongoConnect.collection("tasks").find({
-      id: {$in: getIDs || getUserTasks}
-    }).toArray((err, docs) => {
+    var queryObj = {};
+    queryObj[getIDs ? "id" : "caselessUser"] = {$in: getIDs || getUserTasks};
+
+    // Convert all user ids to lowercase
+    if(queryObj.caselessUser) queryObj.caselessUser.$in.forEach((value, index) => {
+      queryObj.caselessUser.$in[index] = value.toLowerCase();
+    });
+
+    global.mongoConnect.collection("tasks").find(queryObj).toArray((err, docs) => {
 
       if(err || !docs.length) {
         if(err) logger.log("Failed database query. (" + err + ")", 2, true, config.moduleName, __line, __file);
