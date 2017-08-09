@@ -15,7 +15,7 @@ global.mongoConnect = require("./custom_modules/mongoConnect.daemon.js");
 // Include required files + define variables
 var config = require("./custom_modules/config/index.config.json"),
 http = require("http"),
-webSocketServer = require("websocket").server,
+webSocketServer = require("ws").Server,
 logger = global.logger,
 apiResponses = global.apiResponses,
 apis = [];
@@ -45,14 +45,10 @@ server.listen(config.usePort, () => {
 });
 
 // Start WebSocket server
-var wsServer = new webSocketServer({
-  httpServer: server
-});
+var wsServer = new webSocketServer({server});
 
-wsServer.on('request', (request) => {
+wsServer.on('connection', (connection) => {
   setTimeout(() => {
-    logger.log("Recieved API connection from origin " + request.origin + ".", 6, false, config.moduleName, __line, __file);
-    var connection = request.accept(null, request.origin);
 
     var firstMessageSent = false;
 
@@ -80,8 +76,8 @@ wsServer.on('request', (request) => {
       if(connection.isSpecialConnection) return; // This is a special connection, don't respond to the message
 
       if(!freqBlock) {
-        if(!firstMessageSent && message.type === 'utf8' && config.specialConnections[message.utf8Data]) {
-          var specReg = config.specialConnections[message.utf8Data];
+        if(!firstMessageSent && config.specialConnections[message]) {
+          var specReg = config.specialConnections[message];
           // This request is a special request. Hand it off to be used by the module:
           apis[specReg[0]][specReg[1]](connection);
 
@@ -95,42 +91,35 @@ wsServer.on('request', (request) => {
           return;
         }
         firstMessageSent = true;
-        if (message.type === 'utf8') {
-          var msgObject;
-          try {
-            msgObject = JSON.parse(message.utf8Data);
-          } catch(e) {
-            connection.send(apiResponses.strings.errors.malformedRequest);
-            return;
-          }
+        var msgObject;
+        try {
+          msgObject = JSON.parse(message);
+        } catch(e) {
+          connection.send(apiResponses.strings.errors.malformedRequest);
+          return;
+        }
+        console.log(message);
 
-          if(msgObject.id) {
-            if(msgObject.action) {
-              if(config.apiRoutes[msgObject.action]) {
-                // This is the handoff - where the message is send to the registered (via config file) module with these three params.
-                apis[config.apiRoutes[msgObject.action][0]][config.apiRoutes[msgObject.action][1]](msgObject, connection);
-              } else {
-                connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidAction, {"id": msgObject.id}, true));
-                return;
-              }
+        if(msgObject.id) {
+          if(msgObject.action) {
+            if(config.apiRoutes[msgObject.action]) {
+              // This is the handoff - where the message is send to the registered (via config file) module with these three params.
+              apis[config.apiRoutes[msgObject.action][0]][config.apiRoutes[msgObject.action][1]](msgObject, connection);
             } else {
-              connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": msgObject.id}, true));
+              connection.send(apiResponses.concatObj(apiResponses.JSON.errors.invalidAction, {"id": msgObject.id}, true));
               return;
             }
           } else {
-            connection.send(apiResponses.strings.errors.missingParameters);
+            connection.send(apiResponses.concatObj(apiResponses.JSON.errors.malformedRequest, {"id": msgObject.id}, true));
+            return;
           }
         } else {
-          connection.send(apiResponses.strings.errors.malformedRequest);
+          connection.send(apiResponses.strings.errors.missingParameters);
         }
       } else {
         connection.send(apiResponses.strings.errors.tooManyRequests);
         return;
       }
-    });
-
-    connection.on('close', () => {
-      logger.log("Connection from " + request.origin + " closed.", 6, false, config.moduleName, __line, __file);
     });
   });
 }, 2000);
